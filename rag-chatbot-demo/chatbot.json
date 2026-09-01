@@ -1,0 +1,196 @@
+{
+  "name": "RAG Demo - Chatbot",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "options": {
+          "allowedOrigins": "*",
+          "responseMode": "lastNode"
+        }
+      },
+      "id": "92504efb-eb56-43b8-bdf7-e9925e3b0488",
+      "name": "When Chat Message Received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        240,
+        304
+      ],
+      "webhookId": "75e162eb-c472-4fa0-96b1-e376112ca39c"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: { parts: [{ text: $json.chatInput }] } }) }}",
+        "options": {}
+      },
+      "id": "54b9777e-5b30-470d-b216-aaa7f9d95541",
+      "name": "Embed Question",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        464,
+        304
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "OdykdT6r3OCnBNuY",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rcdvoqbqpbycvnvfqkfp.supabase.co/rest/v1/rpc/match_faq_chunks",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query_embedding: $json.embedding.values, match_count: 3 }) }}",
+        "options": {}
+      },
+      "id": "ad292f65-e9d8-4fea-80a7-f406eb39c45f",
+      "name": "Search Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        688,
+        304
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "9Gev6WL9Sq9ULpMT",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const chunks = $input.all().map(item => item.json.content);\nconst context = chunks.join('\\n---\\n');\nconst question = $('When Chat Message Received').first().json.chatInput;\nreturn [{ json: { context, question } }];"
+      },
+      "id": "4ebaf40d-71ff-499b-a630-e770a6ef4514",
+      "name": "Build Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Customer question: {{ $json.question }}\n\nRelevant company info:\n{{ $json.context }}\n\nAnswer the customer using ONLY the info above. If the info does not cover the question, say you are not sure and a team member will follow up. Keep it short, friendly, and professional. Do not mention \"the info above\" or that you are an AI.",
+        "options": {}
+      },
+      "id": "070cb03e-5f81-49e7-9a05-c57f106385f5",
+      "name": "Answer Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1120,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "id": "c7fe52b7-ffb6-4690-8f72-136bff4c4030",
+      "name": "Groq Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        512
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "ynFhvh2U4lx7fq1T",
+          "name": "Groq account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Chat Message Received": {
+      "main": [
+        [
+          {
+            "node": "Embed Question",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Question": {
+      "main": [
+        [
+          {
+            "node": "Search Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Supabase": {
+      "main": [
+        [
+          {
+            "node": "Build Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Context": {
+      "main": [
+        [
+          {
+            "node": "Answer Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Answer Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "08c701d0-dc83-46ad-a03b-bdd0bafbcecb",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "0489cadf9782f79cad9523975acf35005de1726f8c0e0df3b445330953c67a54"
+  },
+  "nodeGroups": [],
+  "id": "ymnOGNyc4VfIeRzH",
+  "tags": []
+}
