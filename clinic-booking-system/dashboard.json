@@ -1,0 +1,128 @@
+{
+  "name": "Clinic Appointment Dashboard",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "clinic-dashboard",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "5a13b223-7bd7-4e6d-a090-bc37e2f4ec35",
+      "name": "Dashboard Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "625395cd-31da-41b7-8d58-be0c3936ebf4"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "XMPIS84yhYx3rCvR"
+        },
+        "returnAll": true
+      },
+      "id": "e9d7df9b-602e-4ea6-af73-55e9946a06d0",
+      "name": "Get All Bookings",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst rows = $input.all().map(i => i.json).filter(r => r && r.id);\nconst now = new Date();\nconst todayStr = now.toISOString().slice(0,10);\n\nrows.sort((a,b) => new Date(a.appointmentDateTime) - new Date(b.appointmentDateTime));\n\nconst today = rows.filter(r => r.status !== 'cancelled' && (r.appointmentDateTime||'').startsWith(todayStr));\nconst upcoming = rows.filter(r => r.status !== 'cancelled' && r.appointmentDateTime > todayStr + 'T23:59:59' );\nconst cancelled = rows.filter(r => r.status === 'cancelled');\nconst past = rows.filter(r => r.status !== 'cancelled' && r.appointmentDateTime < todayStr);\n\nfunction fmt(dt) {\n  if (!dt) return '-';\n  const d = new Date(dt);\n  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) + ' at ' + d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });\n}\n\nfunction row(r, statusClass) {\n  return `<tr>\n    <td>#${r.id}</td>\n    <td><strong>${r.patientName || '-'}</strong></td>\n    <td>${r.phone || '-'}</td>\n    <td>${r.email || '-'}</td>\n    <td>${r.service || '-'}</td>\n    <td>${fmt(r.appointmentDateTime)}</td>\n    <td><span class=\"badge ${statusClass}\">${r.status || 'confirmed'}</span></td>\n  </tr>`;\n}\n\nfunction table(list, statusClass, emptyMsg) {\n  if (!list.length) return `<p class=\"empty\">${emptyMsg}</p>`;\n  return `<table><thead><tr><th>ID</th><th>Patient</th><th>Phone</th><th>Email</th><th>Service</th><th>Date & Time</th><th>Status</th></tr></thead><tbody>${list.map(r => row(r, statusClass)).join('')}</tbody></table>`;\n}\n\nconst html = `<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Bright Smile Dental — Dashboard</title>\n<style>\n  * { box-sizing: border-box; }\n  body { font-family: -apple-system, Arial, sans-serif; background: #f4f8fb; color: #16324f; margin: 0; padding: 24px; }\n  .header { max-width: 1100px; margin: 0 auto 24px; }\n  .header h1 { font-size: 24px; margin: 0 0 4px; }\n  .header p { color: #6b8299; margin: 0; font-size: 14px; }\n  .stats { display: flex; gap: 16px; max-width: 1100px; margin: 0 auto 28px; flex-wrap: wrap; }\n  .stat-card { background: #fff; border-radius: 12px; padding: 16px 20px; box-shadow: 0 4px 14px rgba(22,50,79,.06); min-width: 130px; flex: 1; }\n  .stat-card .num { font-size: 26px; font-weight: 700; color: #137c8b; }\n  .stat-card .label { font-size: 13px; color: #6b8299; margin-top: 2px; }\n  .section { max-width: 1100px; margin: 0 auto 32px; background: #fff; border-radius: 14px; padding: 20px 22px; box-shadow: 0 4px 14px rgba(22,50,79,.06); }\n  .section h2 { font-size: 17px; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }\n  table { width: 100%; border-collapse: collapse; font-size: 14px; }\n  th { text-align: left; color: #6b8299; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; padding: 8px 10px; border-bottom: 2px solid #eef3f7; }\n  td { padding: 10px; border-bottom: 1px solid #eef3f7; }\n  tr:hover td { background: #f9fbfd; }\n  .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }\n  .badge.confirmed { background: #e6f7f2; color: #0f9d6a; }\n  .badge.cancelled { background: #fdeceb; color: #d9483b; }\n  .empty { color: #93a5b5; font-size: 14px; padding: 6px 0; }\n  .refresh { display: inline-block; margin-top: 6px; font-size: 13px; color: #137c8b; text-decoration: none; }\n</style></head>\n<body>\n  <div class=\"header\">\n    <h1>🦷 Bright Smile Dental — Appointments</h1>\n    <p>Live view of all patient bookings. <a class=\"refresh\" href=\"\">Refresh</a></p>\n  </div>\n  <div class=\"stats\">\n    <div class=\"stat-card\"><div class=\"num\">${today.length}</div><div class=\"label\">Today</div></div>\n    <div class=\"stat-card\"><div class=\"num\">${upcoming.length}</div><div class=\"label\">Upcoming</div></div>\n    <div class=\"stat-card\"><div class=\"num\">${cancelled.length}</div><div class=\"label\">Cancelled</div></div>\n    <div class=\"stat-card\"><div class=\"num\">${rows.length}</div><div class=\"label\">Total Bookings</div></div>\n  </div>\n  <div class=\"section\"><h2>📅 Today</h2>${table(today, 'confirmed', 'No appointments today.')}</div>\n  <div class=\"section\"><h2>⏭️ Upcoming</h2>${table(upcoming, 'confirmed', 'No upcoming appointments.')}</div>\n  <div class=\"section\"><h2>❌ Cancelled</h2>${table(cancelled, 'cancelled', 'No cancelled appointments.')}</div>\n</body></html>`;\n\nreturn [{ json: { html } }];\n"
+      },
+      "id": "2bc4e2ce-3442-4b87-9343-a6abbcd5f9a0",
+      "name": "Build Dashboard HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html"
+              }
+            ]
+          }
+        }
+      },
+      "id": "c0a1bf20-3554-4a7e-a141-b3139c5d13ba",
+      "name": "Show Dashboard",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Dashboard Request": {
+      "main": [
+        [
+          {
+            "node": "Get All Bookings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Bookings": {
+      "main": [
+        [
+          {
+            "node": "Build Dashboard HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Dashboard HTML": {
+      "main": [
+        [
+          {
+            "node": "Show Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "bf853f27-89f9-489e-b91a-786da41c9c7c",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "0489cadf9782f79cad9523975acf35005de1726f8c0e0df3b445330953c67a54"
+  },
+  "nodeGroups": [],
+  "id": "U2Vwb3QjhCgtuDzI",
+  "tags": []
+}
