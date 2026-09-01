@@ -1,0 +1,1632 @@
+{
+  "name": "Email Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "category:primary",
+          "readStatus": "unread"
+        },
+        "options": {}
+      },
+      "id": "9b403f81-d45b-4c42-b9f5-72cfd65487f1",
+      "name": "New Email",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        256
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "i35x1YRoWehrKi8y",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "=Subject: {{ $json.subject }}\nFrom: {{ $json.from.value[0].address }}\nBody:\n{{ $json.text || $json.snippet }}",
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"properties\":{\"category\":{\"type\":\"string\",\"enum\":[\"Professional\",\"Friendly\",\"Promotion\",\"Newsletter\",\"Important\",\"Other\"]},\"priority\":{\"type\":\"string\",\"enum\":[\"High\",\"Medium\",\"Low\"]},\"needsReply\":{\"type\":\"boolean\"},\"reasoning\":{\"type\":\"string\"}},\"required\":[\"category\",\"priority\",\"needsReply\"]}",
+        "options": {}
+      },
+      "id": "fae94dc6-c6eb-4107-9a4c-7b1212c8a1f4",
+      "name": "Classify Email",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3.6-27b",
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "fd08467e-9a40-4947-bcd1-b86d9535be6b",
+      "name": "Kimi K2 Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        304,
+        480
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "5tOaAtHUuerooS98",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.output.needsReply }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "942af6fe-89cd-4f1e-9e14-9f15b6bde2c1",
+      "name": "Needs Reply?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        576,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Write a concise, appropriate email reply to the message below.\n\nCategory: {{ $('Classify Email').item.json.output.category }}\nFrom: {{ $('New Email').item.json.from.value[0].address }}\nSubject: {{ $('New Email').item.json.subject }}\nBody:\n{{ $('New Email').item.json.text || $('New Email').item.json.snippet }}\n\nMatch the tone to the category (professional/friendly/etc). Keep it brief and natural. Output ONLY the reply body text, no subject line, no greeting like \"Here is a reply\", no markdown.",
+        "batching": {}
+      },
+      "id": "6cd6808b-1638-4df5-9112-1da347330bdd",
+      "name": "Generate Reply Draft",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {
+          "temperature": 0.5
+        }
+      },
+      "id": "c9ddf1a4-69cb-4653-b379-699e6f6045f8",
+      "name": "Kimi K2 Model (Reply)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        880,
+        224
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "5tOaAtHUuerooS98",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "refId",
+              "type": "string",
+              "value": "={{ $('New Email').item.json.id }}"
+            },
+            {
+              "id": "2",
+              "name": "gmailMessageId",
+              "type": "string",
+              "value": "={{ $('New Email').item.json.id }}"
+            },
+            {
+              "id": "3",
+              "name": "threadId",
+              "type": "string",
+              "value": "={{ $('New Email').item.json.threadId }}"
+            },
+            {
+              "id": "4",
+              "name": "senderEmail",
+              "type": "string",
+              "value": "={{ $('New Email').item.json.from.value[0].address }}"
+            },
+            {
+              "id": "5",
+              "name": "subject",
+              "type": "string",
+              "value": "={{ $('New Email').item.json.subject }}"
+            },
+            {
+              "id": "6",
+              "name": "draftText",
+              "type": "string",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bff1483a-375d-4922-8312-0f3dc0e5f5c2",
+      "name": "Build Record",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        864,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_replies"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "token": "={{ $json.refId }}",
+            "gmailMessageId": "={{ $json.gmailMessageId }}",
+            "threadId": "={{ $json.threadId }}",
+            "senderEmail": "={{ $json.senderEmail }}",
+            "subject": "={{ $json.subject }}",
+            "draftText": "={{ $json.draftText }}",
+            "status": "pending",
+            "reminderSent": false
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "token",
+              "displayName": "token",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "gmailMessageId",
+              "displayName": "gmailMessageId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "threadId",
+              "displayName": "threadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "senderEmail",
+              "displayName": "senderEmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "draftText",
+              "displayName": "draftText",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "telegramMessageId",
+              "displayName": "telegramMessageId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reminderSent",
+              "displayName": "reminderSent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "75577648-76a7-421d-82da-a1cd7cc79efd",
+      "name": "Save Pending Reply",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1152,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "5443630474",
+        "text": "=📧 <b>New email needs a reply</b>\n\n<b>From:</b> {{ $('Build Record').item.json.senderEmail }}\n<b>Subject:</b> {{ $('Build Record').item.json.subject }}\n\n<b>Draft reply:</b>\n{{ $('Build Record').item.json.draftText }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Send",
+                    "additionalFields": {
+                      "callback_data": "=send:{{ $('Build Record').item.json.refId }}"
+                    }
+                  },
+                  {
+                    "text": "✏️ Edit",
+                    "additionalFields": {
+                      "callback_data": "=edit:{{ $('Build Record').item.json.refId }}"
+                    }
+                  },
+                  {
+                    "text": "❌ Reject",
+                    "additionalFields": {
+                      "callback_data": "=reject:{{ $('Build Record').item.json.refId }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "0feea9cc-99f4-4b52-a498-0159ba8551b6",
+      "name": "Send Approval Request",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1376,
+        400
+      ],
+      "webhookId": "48af1bfd-9567-410e-b01b-e0bd48032fa2",
+      "credentials": {
+        "telegramApi": {
+          "id": "wpxLVFaROKoKzxoI",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_replies"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "token",
+              "keyValue": "={{ $('Build Record').item.json.refId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telegramMessageId": "={{ $json.message_id || $json.result?.message_id }}"
+          },
+          "schema": [
+            {
+              "id": "telegramMessageId",
+              "displayName": "telegramMessageId",
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ff760c08-a8a3-42d8-b9b9-7c07d236f1aa",
+      "name": "Save Telegram Message ID",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1600,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "id": "fd5de358-50f7-4e1e-a189-f75e9bef98b1",
+      "name": "Telegram Update",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        912
+      ],
+      "webhookId": "9eb5ae10-3082-43f2-acaf-15f2b2412281",
+      "credentials": {
+        "telegramApi": {
+          "id": "wpxLVFaROKoKzxoI",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.callback_query }}",
+              "operator": {
+                "operation": "exists",
+                "singleValue": true,
+                "type": "string"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "855470e5-bad5-4d9b-af5a-2d7ec3504df5",
+      "name": "Has Callback?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        224,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "action",
+              "type": "string",
+              "value": "={{ $json.callback_query.data.split(\":\")[0] }}"
+            },
+            {
+              "id": "2",
+              "name": "refId",
+              "type": "string",
+              "value": "={{ $json.callback_query.data.split(\":\")[1] }}"
+            },
+            {
+              "id": "3",
+              "name": "queryId",
+              "type": "string",
+              "value": "={{ $json.callback_query.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c6172f39-55dd-4cb9-b9c7-73487a622536",
+      "name": "Parse Callback",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        448,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $json.queryId }}",
+        "additionalFields": {}
+      },
+      "id": "6b31f2c7-41da-4b3f-b231-8d4bf71478a8",
+      "name": "Acknowledge Tap",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        736,
+        784
+      ],
+      "webhookId": "b30b6183-0436-46f7-8c8c-2ede9e2602bd",
+      "credentials": {
+        "telegramApi": {
+          "id": "wpxLVFaROKoKzxoI",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $('Parse Callback').item.json.action }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "send"
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "5db212bf-1c7d-4334-a240-92d0277fcb25",
+      "name": "Action = Send?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        896,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_replies"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "token",
+              "keyValue": "={{ $('Parse Callback').item.json.refId }}"
+            }
+          ]
+        }
+      },
+      "id": "d17608c1-2a37-4852-a940-29b5b907d277",
+      "name": "Get Pending (Send)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $json.gmailMessageId }}",
+        "emailType": "text",
+        "message": "={{ $json.draftText }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "0cde08c0-20b0-443a-a8f2-2f4a8e60fefa",
+      "name": "Send Gmail Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1360,
+        560
+      ],
+      "webhookId": "8f7aa81b-23ec-499a-9c23-3f04298b7b72",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "i35x1YRoWehrKi8y",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_replies"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "token",
+              "keyValue": "={{ $('Parse Callback').item.json.refId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "displayName": "status",
+              "id": "status",
+              "type": "string"
+            }
+          ],
+          "value": {
+            "status": "sent"
+          }
+        },
+        "options": {}
+      },
+      "id": "95138a6f-5630-4330-99e4-0a1805b31564",
+      "name": "Mark Sent",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1584,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "5443630474",
+        "text": "✅ Reply sent successfully",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "a620816c-9d48-4813-b64c-d9950e278adb",
+      "name": "Confirm Sent",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1824,
+        576
+      ],
+      "webhookId": "e61337c4-5854-44a1-ae0c-288316cad7c1",
+      "credentials": {
+        "telegramApi": {
+          "id": "wpxLVFaROKoKzxoI",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $('Parse Callback').item.json.action }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "edit"
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "43d271b4-fcf5-411e-9721-f800833bb28c",
+      "name": "Action = Edit?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1120,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_replies"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "token",
+              "keyValue": "={{ $('Parse Callback').item.json.refId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "displayName": "status",
+              "id": "status",
+              "type": "string"
+            }
+          ],
+          "value": {
+            "status": "awaiting_edit"
+          }
+        },
+        "options": {}
+      },
+      "id": "942bb10b-0b42-448e-89a6-dedc1e83ca19",
+      "name": "Mark Awaiting Edit",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "5443630474",
+        "text": "✏️ Reply directly to the original draft message above with your new text, and I'll send that instead.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "a6c17394-2b5a-4496-a31d-f02165c0101d",
+      "name": "Ask For Edit Text",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1568,
+        800
+      ],
+      "webhookId": "f3bd5458-5898-4d41-b135-584ceb035bd8",
+      "credentials": {
+        "telegramApi": {
+          "id": "wpxLVFaROKoKzxoI",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_replies"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "token",
+              "keyValue": "={{ $('Parse Callback').item.json.refId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "displayName": "status",
+              "id": "status",
+              "type": "string"
+            }
+          ],
+          "value": {
+            "status": "rejected"
+          }
+        },
+        "options": {}
+      },
+      "id": "2cb92397-5c14-457e-9113-f497d40b2de2",
+      "name": "Mark Rejected",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "5443630474",
+        "text": "❌ Draft discarded, no reply sent.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "6550e464-a935-4af9-8eac-88025fe60023",
+      "name": "Confirm Rejected",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1568,
+        1008
+      ],
+      "webhookId": "d9b8a0c2-f356-4677-b49b-15b331577b85",
+      "credentials": {
+        "telegramApi": {
+          "id": "wpxLVFaROKoKzxoI",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.message.reply_to_message }}",
+              "operator": {
+                "operation": "exists",
+                "singleValue": true,
+                "type": "string"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "61a3ddd8-c208-4afd-9eca-f70073702623",
+      "name": "Is Reply to Draft?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_replies"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "telegramMessageId",
+              "keyValue": "={{ $json.message.reply_to_message.message_id }}"
+            },
+            {
+              "keyName": "status",
+              "keyValue": "awaiting_edit"
+            }
+          ]
+        }
+      },
+      "id": "b15451d8-455e-4d2b-b42a-95fb4822fa78",
+      "name": "Find Pending By TG Message",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $json.gmailMessageId }}",
+        "emailType": "text",
+        "message": "={{ $('Telegram Update').item.json.message.text }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "39307db6-0b8c-4cea-8f86-e69781b80f4a",
+      "name": "Send Gmail Reply (Edited)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        1152
+      ],
+      "webhookId": "012aeeeb-d5b0-402a-99d2-d062a4578407",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "i35x1YRoWehrKi8y",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_replies"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "token",
+              "keyValue": "={{ $('Find Pending By TG Message').item.json.token }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "sent"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "token",
+              "displayName": "token",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "gmailMessageId",
+              "displayName": "gmailMessageId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "threadId",
+              "displayName": "threadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "senderEmail",
+              "displayName": "senderEmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "draftText",
+              "displayName": "draftText",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "telegramMessageId",
+              "displayName": "telegramMessageId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reminderSent",
+              "displayName": "reminderSent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "c8f9c808-6697-4c3a-b3f0-898f7d6a00a7",
+      "name": "Mark Sent (Edited)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "5443630474",
+        "text": "✅ Reply sent successfully (with your edits)",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "9219bf73-a89d-498b-9bda-0c2d2044ff06",
+      "name": "Confirm Sent (Edited)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1344,
+        1152
+      ],
+      "webhookId": "7d2d5358-fd2b-4e2b-ad0c-76fb9dca032c",
+      "credentials": {
+        "telegramApi": {
+          "id": "wpxLVFaROKoKzxoI",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "cbee4793-92f9-4c04-b384-3f175f612973",
+      "name": "Ignore",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        672,
+        1312
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "8cef1354-e902-4863-8c88-841c06f3b7fd",
+      "name": "Hourly Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        608,
+        1536
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_replies"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "keyValue": "pending"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "id": "eb5024a5-e82b-4d22-a881-5a0fd88ad7c9",
+      "name": "Get Pending Drafts",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        832,
+        1536
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.reminderSent }}",
+              "operator": {
+                "operation": "false",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": false
+            },
+            {
+              "leftValue": "={{ new Date($json.createdAt).getTime() }}",
+              "operator": {
+                "operation": "lt",
+                "type": "number"
+              },
+              "rightValue": "={{ Date.now() - 3 * 60 * 60 * 1000 }}"
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "906b19aa-dad9-44e5-8bef-e9a47b9b1f83",
+      "name": "Filter Stale (3+ hrs, no reminder yet)",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1056,
+        1504
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "5443630474",
+        "text": "=⏰ Still waiting on this reply\n\n<b>From:</b> {{ $json.senderEmail }}\n<b>Subject:</b> {{ $json.subject }}\n\n<b>Draft reply:</b>\n{{ $json.draftText }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Send",
+                    "additionalFields": {
+                      "callback_data": "=send:{{ $json.token }}"
+                    }
+                  },
+                  {
+                    "text": "✏️ Edit",
+                    "additionalFields": {
+                      "callback_data": "=edit:{{ $json.token }}"
+                    }
+                  },
+                  {
+                    "text": "❌ Reject",
+                    "additionalFields": {
+                      "callback_data": "=reject:{{ $json.token }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "5d0d313d-92d2-482d-9ddd-3df8164898c3",
+      "name": "Send Reminder",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1344,
+        1504
+      ],
+      "webhookId": "5aa07cf3-ee05-4bbf-a238-ec31e89d4889",
+      "credentials": {
+        "telegramApi": {
+          "id": "wpxLVFaROKoKzxoI",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_replies"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "token",
+              "keyValue": "={{ $('Filter Stale (3+ hrs, no reminder yet)').item.json.token }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "displayName": "reminderSent",
+              "id": "reminderSent",
+              "type": "boolean"
+            }
+          ],
+          "value": {
+            "reminderSent": true
+          }
+        },
+        "options": {}
+      },
+      "id": "71848859-567a-4565-bc94-697ed8ebcee4",
+      "name": "Mark Reminder Sent",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1584,
+        1472
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Email": {
+      "main": [
+        [
+          {
+            "node": "Classify Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Email": {
+      "main": [
+        [
+          {
+            "node": "Needs Reply?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kimi K2 Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Classify Email",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Reply?": {
+      "main": [
+        [
+          {
+            "node": "Generate Reply Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Reply Draft": {
+      "main": [
+        [
+          {
+            "node": "Build Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kimi K2 Model (Reply)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Reply Draft",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Record": {
+      "main": [
+        [
+          {
+            "node": "Save Pending Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Pending Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Approval Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Approval Request": {
+      "main": [
+        [
+          {
+            "node": "Save Telegram Message ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Update": {
+      "main": [
+        [
+          {
+            "node": "Has Callback?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Callback?": {
+      "main": [
+        [
+          {
+            "node": "Parse Callback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Reply to Draft?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Callback": {
+      "main": [
+        [
+          {
+            "node": "Acknowledge Tap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Acknowledge Tap": {
+      "main": [
+        [
+          {
+            "node": "Action = Send?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Action = Send?": {
+      "main": [
+        [
+          {
+            "node": "Get Pending (Send)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Action = Edit?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending (Send)": {
+      "main": [
+        [
+          {
+            "node": "Send Gmail Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Gmail Reply": {
+      "main": [
+        [
+          {
+            "node": "Mark Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Sent": {
+      "main": [
+        [
+          {
+            "node": "Confirm Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Action = Edit?": {
+      "main": [
+        [
+          {
+            "node": "Mark Awaiting Edit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Awaiting Edit": {
+      "main": [
+        [
+          {
+            "node": "Ask For Edit Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Rejected": {
+      "main": [
+        [
+          {
+            "node": "Confirm Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Reply to Draft?": {
+      "main": [
+        [
+          {
+            "node": "Find Pending By TG Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ignore",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Pending By TG Message": {
+      "main": [
+        [
+          {
+            "node": "Send Gmail Reply (Edited)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Gmail Reply (Edited)": {
+      "main": [
+        [
+          {
+            "node": "Mark Sent (Edited)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Sent (Edited)": {
+      "main": [
+        [
+          {
+            "node": "Confirm Sent (Edited)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hourly Check": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Drafts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Drafts": {
+      "main": [
+        [
+          {
+            "node": "Filter Stale (3+ hrs, no reminder yet)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Stale (3+ hrs, no reminder yet)": {
+      "main": [
+        [
+          {
+            "node": "Send Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminder": {
+      "main": [
+        [
+          {
+            "node": "Mark Reminder Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "6b9d0058-b97d-40d9-b80c-262507346bab",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "0489cadf9782f79cad9523975acf35005de1726f8c0e0df3b445330953c67a54"
+  },
+  "nodeGroups": [],
+  "id": "9Vavxgos7eg7z8NP",
+  "tags": []
+}
