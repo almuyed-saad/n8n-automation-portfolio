@@ -1,0 +1,973 @@
+{
+  "name": "FB Auto Post with Telegram Approval",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {
+          "chatIds": "5443630474"
+        }
+      },
+      "id": "6469bce0-94e3-4b6d-85f5-523d3e5a9d18",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -304,
+        304
+      ],
+      "webhookId": "66921884-cf45-4fb5-8c48-87e3e02db95c",
+      "credentials": {
+        "telegramApi": {
+          "id": "o3XpiNe8FBhHI6w3",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.message ? \"msg\" : \"cb\" }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "msg"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6b144528-d83d-4f85-9d86-f5e9936ec4e8",
+      "name": "Is New Topic Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -64,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "topic",
+              "name": "topic",
+              "value": "={{ $json.message.text }}",
+              "type": "string"
+            },
+            {
+              "id": "chatId",
+              "name": "chatId",
+              "value": "={{ $json.message.chat.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "809b25a6-02f8-4375-ba94-4781a90bf9a3",
+      "name": "Extract Topic",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        192,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.topic }}",
+        "options": {
+          "systemMessage": "You write natural, heartfelt Facebook posts for a personal page based on the topic/instructions the user gives you. Mix Bengali and English naturally like a real person posting, matching whatever script/style the user used. Write 80-120 words with correct grammar in both languages, capturing genuine emotion and following any specific tone or content instructions given. Respond in EXACTLY this format, nothing else, no extra commentary: POST: <the full post text> IMAGE: <a short literal English description of a real photo/scene that visually represents this post, 10-15 words, describing only the visual scene, no text or words inside the image>"
+        }
+      },
+      "id": "bcfee277-da48-41eb-88d9-340bb87f0132",
+      "name": "Write Facebook Post",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        912,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "524e0979-6b42-4b1a-b3f0-1091103945dd",
+      "name": "Gemini Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        912,
+        80
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "OdykdT6r3OCnBNuY",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "caption",
+              "name": "caption",
+              "type": "string",
+              "value": "={{ $json.output.includes('IMAGE:') ? $json.output.split('IMAGE:')[0].replace('POST:','').trim() : $json.output.trim() }}"
+            },
+            {
+              "id": "imageUrl",
+              "name": "imageUrl",
+              "type": "string",
+              "value": "=https://image.pollinations.ai/prompt/{{ encodeURIComponent(($json.output.includes('IMAGE:') ? $json.output.split('IMAGE:')[1].trim() : $json.output.trim()) + ', photorealistic, natural lighting, high detail, sharp focus, real photo') }}?width=800&height=800&nologo=true&model=flux"
+            },
+            {
+              "id": "chatId",
+              "name": "chatId",
+              "type": "string",
+              "value": "={{ $('Extract Topic').item.json.chatId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ba849a47-f8bb-4519-969a-e3109eb3b23d",
+      "name": "Prepare Prompts",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1152,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "cachedResultName": "fb_post_drafts",
+          "mode": "id",
+          "value": "KOZ7fwHKFlHUybwg"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "chatId",
+              "keyValue": "={{ $json.chatId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "caption": "={{ $json.caption }}",
+            "chatId": "={{ $json.chatId }}",
+            "editing": false,
+            "imageUrl": "={{ $json.imageUrl }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "81f559d4-1d93-440b-be0a-95c1bf69d781",
+      "name": "Save Draft",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1632,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $json.chatId }}",
+        "file": "={{ $json.imageUrl }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Approve",
+                    "additionalFields": {
+                      "callback_data": "approve"
+                    }
+                  },
+                  {
+                    "text": "✏️ Edit",
+                    "additionalFields": {
+                      "callback_data": "edit"
+                    }
+                  },
+                  {
+                    "text": "❌ Decline",
+                    "additionalFields": {
+                      "callback_data": "decline"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "caption": "={{ $json.caption }}"
+        }
+      },
+      "id": "a63d7241-ff2f-47ea-94d2-362d87cb3423",
+      "name": "Send Preview",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2112,
+        112
+      ],
+      "webhookId": "1ae626e1-eba3-48eb-898a-7f93c7b619a5",
+      "credentials": {
+        "telegramApi": {
+          "id": "o3XpiNe8FBhHI6w3",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "approve"
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              }
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "decline"
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              }
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "edit"
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f0ddd69d-320f-4787-a3c9-4f6a02c6c7ba",
+      "name": "Approve or Decline?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -64,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "KOZ7fwHKFlHUybwg",
+          "cachedResultName": "fb_post_drafts"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "chatId",
+              "keyValue": "={{ $json.callback_query.message.chat.id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "id": "97506787-3e8e-45f8-8677-a0d557e82953",
+      "name": "Get Draft",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        192,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v20.0/942849295570976/photos",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $json.imageUrl }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json.caption }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3bdbf09a-cf96-4389-ab3f-ceb59ee756ed",
+      "name": "Post to Facebook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        432,
+        544
+      ],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "WwtMgFU63wy5DxY5",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $(\"Telegram Trigger\").item.json.callback_query.message.chat.id }}",
+        "text": "✅ Posted to your Facebook Page!",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "10bbf0f7-06ac-41ce-b923-874b50d53b19",
+      "name": "Confirm Posted",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        544
+      ],
+      "webhookId": "8722d600-93ac-47b8-af9d-bb39916961af",
+      "credentials": {
+        "telegramApi": {
+          "id": "o3XpiNe8FBhHI6w3",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $(\"Telegram Trigger\").item.json.callback_query.id }}",
+        "additionalFields": {
+          "text": "Posted!"
+        }
+      },
+      "id": "e71d8dee-198a-4500-8c38-ff94f7e2434f",
+      "name": "Answer Approve Callback",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        912,
+        544
+      ],
+      "webhookId": "2a3ea3f8-6d39-4b6e-86d8-96d2578fec15",
+      "credentials": {
+        "telegramApi": {
+          "id": "o3XpiNe8FBhHI6w3",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.callback_query.message.chat.id }}",
+        "text": "❌ Discarded. Send a new topic anytime.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "54ba28a6-1705-4dbf-ad9b-bde21d5d05b0",
+      "name": "Notify Declined",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        192,
+        704
+      ],
+      "webhookId": "137b60f3-7be5-434b-93b9-a7e38c475a0f",
+      "credentials": {
+        "telegramApi": {
+          "id": "o3XpiNe8FBhHI6w3",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $(\"Telegram Trigger\").item.json.callback_query.id }}",
+        "additionalFields": {
+          "text": "Discarded"
+        }
+      },
+      "id": "9f9642af-c8e1-4a50-bc70-d841f06ea65b",
+      "name": "Answer Decline Callback",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        432,
+        704
+      ],
+      "webhookId": "53a55dba-0a84-430b-b943-a867d41876c3",
+      "credentials": {
+        "telegramApi": {
+          "id": "o3XpiNe8FBhHI6w3",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const staticData = $getWorkflowStaticData('node');\nif (!staticData.editing) { staticData.editing = {}; }\nconst item = $input.item.json;\nconst isEditing = !!staticData.editing[item.chatId];\nreturn { json: { ...item, isEditing } };"
+      },
+      "id": "759825e7-51a3-455b-8b9f-3196ad6f961a",
+      "name": "Check Edit Mode",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.isEditing }}",
+              "operator": {
+                "operation": "equals",
+                "type": "boolean"
+              },
+              "rightValue": true
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "1959da22-8e13-4311-a700-b06ee3eb9a1b",
+      "name": "Is Editing?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "cachedResultName": "fb_post_drafts",
+          "mode": "id",
+          "value": "KOZ7fwHKFlHUybwg"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "chatId",
+              "keyValue": "={{ $('Extract Topic').item.json.chatId }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "id": "6ae0b880-f31c-46c4-a76c-4891c873275a",
+      "name": "Get Old Draft",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        912,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "chatId",
+              "name": "chatId",
+              "type": "string",
+              "value": "={{ $('Extract Topic').item.json.chatId }}"
+            },
+            {
+              "id": "caption",
+              "name": "caption",
+              "type": "string",
+              "value": "={{ $('Extract Topic').item.json.topic }}"
+            },
+            {
+              "id": "imageUrl",
+              "name": "imageUrl",
+              "type": "string",
+              "value": "={{ $json.imageUrl }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "73894bc7-6de6-47ef-b67d-a1789f1ee2be",
+      "name": "Apply Edited Caption",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1152,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const staticData = $getWorkflowStaticData('node');\nif (!staticData.editing) staticData.editing = {};\nstaticData.editing[$json.chatId] = false;\nreturn { json: $json };"
+      },
+      "id": "d3f42976-58fa-43ac-aaa7-2e71090c6bad",
+      "name": "Clear Edit Flag",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "cachedResultName": "fb_post_drafts",
+          "mode": "id",
+          "value": "KOZ7fwHKFlHUybwg"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "chatId",
+              "keyValue": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "id": "79793317-6a5b-4dc8-aef1-d411be5ea10d",
+      "name": "Reload Draft",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1872,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const staticData = $getWorkflowStaticData('node');\nif (!staticData.editing) staticData.editing = {};\nconst chatId = $json.callback_query.message.chat.id;\nstaticData.editing[chatId] = true;\nreturn { json: $json };"
+      },
+      "id": "555b1440-ed30-43d0-9c9a-ed9bca90e205",
+      "name": "Mark Edit Mode",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.callback_query.message.chat.id }}",
+        "text": "✏️ Send your edited post text now — I'll show the updated preview with the same image.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "dcf03d04-c4b9-4a60-9750-7463d5df8d40",
+      "name": "Ask For Edit Text",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        432,
+        864
+      ],
+      "webhookId": "be8f34e6-5008-491a-b26c-c36f68bbcf93",
+      "credentials": {
+        "telegramApi": {
+          "id": "o3XpiNe8FBhHI6w3",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $('Telegram Trigger').item.json.callback_query.id }}",
+        "additionalFields": {
+          "text": "Send new text"
+        }
+      },
+      "id": "736f535f-f9e9-4af4-887a-104d7457d78f",
+      "name": "Answer Edit Callback",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        864
+      ],
+      "webhookId": "f66bd727-1524-4272-a32b-bee048b19a1f",
+      "credentials": {
+        "telegramApi": {
+          "id": "o3XpiNe8FBhHI6w3",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is New Topic Message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is New Topic Message?": {
+      "main": [
+        [
+          {
+            "node": "Extract Topic",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Approve or Decline?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Facebook Post": {
+      "main": [
+        [
+          {
+            "node": "Prepare Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Write Facebook Post",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approve or Decline?": {
+      "main": [
+        [
+          {
+            "node": "Get Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Declined",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Edit Mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to Facebook": {
+      "main": [
+        [
+          {
+            "node": "Confirm Posted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirm Posted": {
+      "main": [
+        [
+          {
+            "node": "Answer Approve Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Declined": {
+      "main": [
+        [
+          {
+            "node": "Answer Decline Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Topic": {
+      "main": [
+        [
+          {
+            "node": "Check Edit Mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Edit Mode": {
+      "main": [
+        [
+          {
+            "node": "Is Editing?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Editing?": {
+      "main": [
+        [
+          {
+            "node": "Get Old Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Write Facebook Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Old Draft": {
+      "main": [
+        [
+          {
+            "node": "Apply Edited Caption",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Edited Caption": {
+      "main": [
+        [
+          {
+            "node": "Clear Edit Flag",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear Edit Flag": {
+      "main": [
+        [
+          {
+            "node": "Save Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Draft": {
+      "main": [
+        [
+          {
+            "node": "Reload Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Edit Mode": {
+      "main": [
+        [
+          {
+            "node": "Ask For Edit Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask For Edit Text": {
+      "main": [
+        [
+          {
+            "node": "Answer Edit Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Prompts": {
+      "main": [
+        [
+          {
+            "node": "Save Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reload Draft": {
+      "main": [
+        [
+          {
+            "node": "Send Preview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Draft": {
+      "main": [
+        [
+          {
+            "node": "Post to Facebook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "a5f60b2d-3b24-4d70-a31c-731229fd3ec6",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "0489cadf9782f79cad9523975acf35005de1726f8c0e0df3b445330953c67a54"
+  },
+  "nodeGroups": [],
+  "id": "Pg0C2umJ5L2Huaqt",
+  "tags": []
+}
