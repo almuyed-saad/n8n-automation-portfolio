@@ -1,0 +1,168 @@
+{
+  "name": "RAG Demo - Ingest FAQ",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "5ba23a3e-64d8-4aaf-b6e1-9427da857d2d",
+      "name": "Start Ingestion",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const faqs = [\n  { content: 'Shipping: Orders are normally delivered within 3-5 business days across the country. Express shipping (1-2 days) is available at checkout for an extra fee.' },\n  { content: 'Returns: We accept returns within 30 days of delivery, as long as the item is unused and in its original packaging. Return shipping is free for defective items.' },\n  { content: 'Refunds: Once we receive your returned item, refunds are processed within 5-7 business days back to your original payment method.' },\n  { content: 'Warranty: All electronics come with a 1-year manufacturer warranty covering defects. Accidental damage is not covered.' },\n  { content: 'Payment methods: We accept Visa, Mastercard, PayPal, and Apple Pay. All payments are processed securely at checkout.' },\n  { content: 'Order issues: If your order arrives damaged or incorrect, contact support within 48 hours with photos, and we will send a replacement free of charge.' }\n];\nreturn faqs.map(f => ({ json: f }));"
+      },
+      "id": "ebda79fc-d5aa-4912-ba56-55deb16924ae",
+      "name": "Fake FAQ Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: { parts: [{ text: $json.content }] } }) }}",
+        "options": {}
+      },
+      "id": "e013b936-392c-4524-bb7f-c72c8529f87e",
+      "name": "Get Embedding",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        912,
+        208
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "OdykdT6r3OCnBNuY",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rcdvoqbqpbycvnvfqkfp.supabase.co/rest/v1/faq_chunks",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $('Loop Chunks').item.json.content, embedding: $json.embedding.values }) }}",
+        "options": {}
+      },
+      "id": "e2dab88b-519e-4626-8a00-812644ce2662",
+      "name": "Store in Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1120,
+        208
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "9Gev6WL9Sq9ULpMT",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "2e856dd0-b1d3-437d-9e03-502cecaef9ca",
+      "name": "Loop Chunks",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        688,
+        304
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start Ingestion": {
+      "main": [
+        [
+          {
+            "node": "Fake FAQ Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fake FAQ Data": {
+      "main": [
+        [
+          {
+            "node": "Loop Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Embedding": {
+      "main": [
+        [
+          {
+            "node": "Store in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store in Supabase": {
+      "main": [
+        [
+          {
+            "node": "Loop Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Chunks": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Get Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "48f22bc4-829b-4dd4-8813-2047ec6d3b49",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "0489cadf9782f79cad9523975acf35005de1726f8c0e0df3b445330953c67a54"
+  },
+  "nodeGroups": [],
+  "id": "0GCMvjzn9RRLhcxV",
+  "tags": []
+}
