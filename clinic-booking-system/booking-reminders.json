@@ -1,0 +1,707 @@
+{
+  "name": "Clinic Appointment Booking &amp; Reminders",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Book Your Appointment - Bright Smile Dental",
+        "formDescription": "Fill in your details to book an appointment with us.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Full Name",
+              "fieldName": "fullName",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Phone Number",
+              "fieldName": "phone",
+              "placeholder": "01XXXXXXXXX",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email Address",
+              "fieldType": "email",
+              "fieldName": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Service",
+              "fieldType": "dropdown",
+              "fieldName": "service",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "General Checkup"
+                  },
+                  {
+                    "option": "Teeth Cleaning"
+                  },
+                  {
+                    "option": "Tooth Extraction"
+                  },
+                  {
+                    "option": "Root Canal"
+                  },
+                  {
+                    "option": "Braces Consultation"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Preferred Date",
+              "fieldType": "date",
+              "fieldName": "appointmentDate",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "049944ca-b167-4d8e-9f78-cb5ce806132a",
+      "name": "Booking Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        16,
+        80
+      ],
+      "webhookId": "5d33c475-af35-4ad8-add2-4f22af1aa5ff"
+    },
+    {
+      "parameters": {
+        "jsCode": "const selected = $input.first().json; const initial = $('Booking Form').item.json; let base = initial; try { const retryBase = $('Compute Retry Available Slots').item.json; if (retryBase && retryBase.formFieldsJson) base = retryBase; } catch (e) {} const item = { ...base, ...initial, ...selected }; let timeStr = (selected.appointmentTime || '').trim(); timeStr = timeStr.replace('.', ':'); if (!timeStr.includes(':') && timeStr.length === 4) timeStr = timeStr.slice(0, 2) + ':' + timeStr.slice(2); const parts = timeStr.split(':'); if (parts.length === 2) timeStr = parts[0].padStart(2, '0') + ':' + parts[1].padStart(2, '0'); const apptISO = item.appointmentDate + 'T' + timeStr + ':00'; const apptDate = new Date(apptISO); if (isNaN(apptDate.getTime())) throw new Error('Could not understand the time: ' + selected.appointmentTime + '. Please use format like 15:30.'); const remind24h = new Date(apptDate.getTime() - 24 * 60 * 60 * 1000); const remind1h = new Date(apptDate.getTime() - 60 * 60 * 1000); return [{ json: { ...item, appointmentTime: timeStr, appointmentDateTime: apptISO, remind24hISO: remind24h.toISOString(), remind1hISO: remind1h.toISOString() } }];"
+      },
+      "id": "5ba4d4bd-1e3a-415c-abed-d32ec79fc904",
+      "name": "Compute Appointment Timings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "XMPIS84yhYx3rCvR"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "patientName": "={{ $(\"Compute Appointment Timings\").item.json.fullName }}",
+            "phone": "={{ $(\"Compute Appointment Timings\").item.json.phone }}",
+            "email": "={{ $(\"Compute Appointment Timings\").item.json.email }}",
+            "service": "={{ $(\"Compute Appointment Timings\").item.json.service }}",
+            "appointmentDateTime": "={{ $(\"Compute Appointment Timings\").item.json.appointmentDateTime }}",
+            "status": "confirmed"
+          },
+          "schema": [
+            {
+              "id": "patientName",
+              "displayName": "patientName",
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "service",
+              "displayName": "service",
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "appointmentDateTime",
+              "displayName": "appointmentDateTime",
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4bdeb6a2-8bb0-488c-9606-5649dba7fe11",
+      "name": "Store Booking",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1408,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Appointment Booked!",
+        "completionMessage": "Thank you! A confirmation email has been sent to you.",
+        "options": {}
+      },
+      "id": "ac2e2703-52ba-4690-a892-70bc563fdee7",
+      "name": "Booking Confirmed Page",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1648,
+        128
+      ],
+      "webhookId": "7d5d9629-ff7e-441e-b43b-6364c7de5a3e"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $(\"Compute Appointment Timings\").item.json.email }}",
+        "subject": "Your Appointment is Confirmed - Bright Smile Dental",
+        "message": "=Hi {{ $('Compute Appointment Timings').item.json.fullName }},<br><br>Your appointment for <b>{{ $('Compute Appointment Timings').item.json.service }}</b> is confirmed for <b>{{ $('Compute Appointment Timings').item.json.appointmentDateTime }}</b>.<br><br>Need to cancel? <a href=\"https://amisaad.app.n8n.cloud/webhook/clinic-cancel?id={{ $json.id }}\">Click here to cancel your appointment</a><br><br>See you soon!<br>Bright Smile Dental",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "190abfd5-57d3-4793-8211-4dce45cbbb7f",
+      "name": "Send Confirmation Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        448
+      ],
+      "webhookId": "5d47d4cf-1fcc-4312-96f8-9e9a7bade56d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "i35x1YRoWehrKi8y",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resume": "specificTime",
+        "dateTime": "={{ $(\"Compute Appointment Timings\").item.json.remind24hISO }}"
+      },
+      "id": "6a8e5844-831d-4109-b32f-f01eb89db5b0",
+      "name": "Wait Until 24h Before",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        688,
+        480
+      ],
+      "webhookId": "d7f4b6f9-0f28-46ff-8586-a9d701f012f7"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $(\"Compute Appointment Timings\").item.json.email }}",
+        "subject": "Reminder: Appointment Tomorrow - Bright Smile Dental",
+        "message": "=Hi {{ $(\"Compute Appointment Timings\").item.json.fullName }},<br><br>This is a reminder that your appointment for <b>{{ $(\"Compute Appointment Timings\").item.json.service }}</b> is coming up on <b>{{ $(\"Compute Appointment Timings\").item.json.appointmentDateTime }}</b>.<br><br>See you soon!<br>Bright Smile Dental",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "7fcd4b14-dd34-40f2-8958-c56d94fb1d82",
+      "name": "Send 24h Reminder",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        912,
+        480
+      ],
+      "webhookId": "1af2d2e9-f166-487c-b22a-337de2cb4305",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "i35x1YRoWehrKi8y",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resume": "specificTime",
+        "dateTime": "={{ $(\"Compute Appointment Timings\").item.json.remind1hISO }}"
+      },
+      "id": "bfb175f4-e553-42bb-89b6-33545f14876a",
+      "name": "Wait Until 1h Before",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1136,
+        480
+      ],
+      "webhookId": "a766486f-0a53-4f70-825a-27d2b1df2942"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $(\"Compute Appointment Timings\").item.json.email }}",
+        "subject": "See You in 1 Hour! - Bright Smile Dental",
+        "message": "=Hi {{ $(\"Compute Appointment Timings\").item.json.fullName }},<br><br>Just a quick reminder that your <b>{{ $(\"Compute Appointment Timings\").item.json.service }}</b> appointment is in about 1 hour ({{ $(\"Compute Appointment Timings\").item.json.appointmentDateTime }}).<br><br>See you soon!<br>Bright Smile Dental",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "ada825b8-207e-40cd-b908-17f4afec9b57",
+      "name": "Send Final Reminder",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1360,
+        496
+      ],
+      "webhookId": "002c990c-b5d0-4123-a916-b918899840e3",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "i35x1YRoWehrKi8y",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "5443630474",
+        "text": "=🦷 New Appointment Booked!\n\nPatient: {{ $('Compute Appointment Timings').item.json.fullName }}\nPhone: {{ $('Compute Appointment Timings').item.json.phone }}\nEmail: {{ $('Compute Appointment Timings').item.json.email }}\nService: {{ $('Compute Appointment Timings').item.json.service }}\nDate/Time: {{ $('Compute Appointment Timings').item.json.appointmentDateTime }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "192f4c5e-1a2b-407f-992a-4472e9ef0d4b",
+      "name": "Notify Clinic Owner",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1696,
+        -208
+      ],
+      "webhookId": "d6510088-8e87-42f4-a095-4c203c62c8c9",
+      "credentials": {
+        "telegramApi": {
+          "id": "dg4MOFYhJldO7jrR",
+          "name": "Bright Smile Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "XMPIS84yhYx3rCvR"
+        },
+        "returnAll": true
+      },
+      "id": "fb671113-eec0-4949-81ea-8db62578bef9",
+      "name": "Get Booked Slots",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        -128
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const ALL_SLOTS = ['09:00','10:00','11:00','12:00','14:00','15:00','16:00','17:00'];\nconst trigger = $('Booking Form').item.json;\nconst bookedRows = $input.all().map(i => i.json).filter(r => r && r.appointmentDateTime);\nconst bookedTimesForDate = bookedRows.filter(r => (r.appointmentDateTime || '').startsWith(trigger.appointmentDate)).map(r => r.appointmentDateTime.split('T')[1].slice(0,5));\nconst availableSlots = ALL_SLOTS.filter(s => !bookedTimesForDate.includes(s));\nconst optionValues = availableSlots.length ? availableSlots.map(s => ({ option: s })) : [{ option: 'No slots available - go back and pick another date' }];\nconst formFieldsJson = { values: [{ fieldLabel: 'Preferred Time', fieldName: 'appointmentTime', fieldType: 'dropdown', requiredField: true, fieldOptions: { values: optionValues } }] };\nreturn [{ json: { ...trigger, formFieldsJson } }];"
+      },
+      "id": "4cf456c1-5a8e-4326-83fe-17e1161afc23",
+      "name": "Compute Available Slots",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        -128
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "defineForm": "json",
+        "jsonOutput": "={{ JSON.stringify($(\"Compute Available Slots\").item.json.formFieldsJson.values) }}",
+        "options": {
+          "formTitle": "Choose a Time",
+          "formDescription": "Select an available appointment time."
+        }
+      },
+      "id": "e0567f6d-1ce2-4d7f-8f20-da80b18f4e14",
+      "name": "Time Selection Page",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        992,
+        -144
+      ],
+      "webhookId": "98265fbc-e612-49de-8d4d-9fc2f99c7df8"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "XMPIS84yhYx3rCvR"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "appointmentDateTime",
+              "keyValue": "={{ $json.appointmentDateTime }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "id": "1536c67f-fb9b-4356-94f8-6f1fa654b52a",
+      "name": "Check Double Booking",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        688,
+        144
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.id }}",
+              "operator": {
+                "operation": "notEmpty",
+                "type": "string"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "f1b828dc-361f-4b52-8f74-034622de411c",
+      "name": "Is Slot Taken",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        960,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "formFields": {
+          "values": [
+            {
+              "fieldType": "html",
+              "html": "<div class='slot-taken-card'><div class='slot-brand'>Bright Smile Dental</div><div class='slot-icon' aria-hidden='true'>!</div><h2>That time was just taken</h2><p>Another patient booked this appointment time a moment ago. Your details are still safe, and we can check the latest availability again.</p><div class='slot-next'><strong>Next step</strong><br>Choose another time below. The available times will be refreshed before you continue.</div><p class='slot-date'>Looking for another day? <a class='slot-date-link' href='https://amisaad.app.n8n.cloud/form/5d33c475-af35-4ad8-add2-4f22af1aa5ff'>Choose a different date</a></p></div>"
+            }
+          ]
+        },
+        "options": {
+          "formTitle": "Appointment Update",
+          "formDescription": "We’re sorry, that time is no longer available.",
+          "buttonLabel": "Choose another time",
+          "customCss": "body{margin:0;background:#f4f8fb;color:#16324f;font-family:Arial,sans-serif}.slot-taken-card{background:#fff;border:1px solid #dce8f0;border-radius:18px;box-shadow:0 12px 32px rgba(22,50,79,.12);padding:30px 26px;margin:18px auto 24px;max-width:520px;text-align:center}.slot-brand{color:#137c8b;font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:16px}.slot-icon{width:52px;height:52px;margin:0 auto 16px;border-radius:50%;background:#fff4df;color:#b26a00;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700}.slot-taken-card h2{margin:0 0 12px;color:#16324f;font-size:26px;line-height:1.2}.slot-taken-card p{margin:0 auto 18px;color:#526779;font-size:15px;line-height:1.6;max-width:430px}.slot-next{margin:0 auto 20px;padding:13px 15px;border-radius:10px;background:#f0f8fa;color:#36596c;font-size:14px;line-height:1.5;text-align:left;max-width:430px}.slot-date{font-size:13px!important;margin-bottom:0!important}.slot-date-link{color:#137c8b;font-weight:700;text-decoration:none}.slot-date-link:hover{text-decoration:underline}button{background:#137c8b!important;border-radius:10px!important;font-weight:700!important;min-height:46px!important}button:hover{background:#0d6571!important}"
+        }
+      },
+      "id": "e7261bf1-a20d-4a12-97aa-0e404f5d5543",
+      "name": "Slot Taken Page",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1232,
+        208
+      ],
+      "webhookId": "b6a6f8d3-ef15-4253-a593-3b6ecc04523d"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "XMPIS84yhYx3rCvR"
+        },
+        "returnAll": true
+      },
+      "id": "d9f645b8-8d31-4f12-a701-0ca7b8142a21",
+      "name": "Get Booked Slots Retry",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1472,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ALL_SLOTS = ['09:00','10:00','11:00','12:00','14:00','15:00','16:00','17:00']; const trigger = $('Booking Form').item.json; const bookedRows = $input.all().map(i => i.json).filter(r => r && r.appointmentDateTime); const bookedTimesForDate = bookedRows.filter(r => (r.appointmentDateTime || '').startsWith(trigger.appointmentDate)).map(r => r.appointmentDateTime.split('T')[1].slice(0,5)); const availableSlots = ALL_SLOTS.filter(s => !bookedTimesForDate.includes(s)); const optionValues = availableSlots.length ? availableSlots.map(s => ({ option: s })) : [{ option: 'No remaining times for this date' }]; const formFieldsJson = { values: [{ fieldType: 'html', html: '<p class=retry-time-note>Choose a different available time for <strong>' + trigger.appointmentDate + '</strong>.</p>' }, { fieldLabel: 'Preferred Time', fieldName: 'appointmentTime', fieldType: 'dropdown', requiredField: true, fieldOptions: { values: optionValues } }] }; return [{ json: { ...trigger, formFieldsJson } }];"
+      },
+      "id": "f82ab9f4-a0b6-4c41-912e-7c5e3d1f7043",
+      "name": "Compute Retry Available Slots",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1696,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "defineForm": "json",
+        "jsonOutput": "={{ JSON.stringify($(\"Compute Retry Available Slots\").item.json.formFieldsJson.values) }}",
+        "options": {
+          "formTitle": "Choose another time",
+          "formDescription": "These are the latest available times for your selected date.",
+          "buttonLabel": "Continue with this time",
+          "customCss": "body{margin:0;background:#f4f8fb;color:#16324f;font-family:Arial,sans-serif}.retry-time-note{background:#f0f8fa;color:#36596c;border-radius:10px;padding:13px 15px;line-height:1.5;margin:0 0 18px}.retry-time-note strong{color:#16324f}button{background:#137c8b!important;border-radius:10px!important;font-weight:700!important;min-height:46px!important}button:hover{background:#0d6571!important}"
+        }
+      },
+      "id": "bd16c8a1-2a73-49d7-b2db-3cc5be3cbd3a",
+      "name": "Retry Time Selection Page",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1904,
+        528
+      ],
+      "webhookId": "77e7730e-4b93-40e0-b0c1-9ed1824900e1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Store Booking": {
+      "main": [
+        [
+          {
+            "node": "Booking Confirmed Page",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Clinic Owner",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Confirmation Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Confirmation Email": {
+      "main": [
+        [
+          {
+            "node": "Wait Until 24h Before",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Until 24h Before": {
+      "main": [
+        [
+          {
+            "node": "Send 24h Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send 24h Reminder": {
+      "main": [
+        [
+          {
+            "node": "Wait Until 1h Before",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Until 1h Before": {
+      "main": [
+        [
+          {
+            "node": "Send Final Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booking Form": {
+      "main": [
+        [
+          {
+            "node": "Get Booked Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Booked Slots": {
+      "main": [
+        [
+          {
+            "node": "Compute Available Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Available Slots": {
+      "main": [
+        [
+          {
+            "node": "Time Selection Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Time Selection Page": {
+      "main": [
+        [
+          {
+            "node": "Compute Appointment Timings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Appointment Timings": {
+      "main": [
+        [
+          {
+            "node": "Check Double Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Double Booking": {
+      "main": [
+        [
+          {
+            "node": "Is Slot Taken",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Slot Taken": {
+      "main": [
+        [
+          {
+            "node": "Slot Taken Page",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Store Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slot Taken Page": {
+      "main": [
+        [
+          {
+            "node": "Get Booked Slots Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Booked Slots Retry": {
+      "main": [
+        [
+          {
+            "node": "Compute Retry Available Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Retry Available Slots": {
+      "main": [
+        [
+          {
+            "node": "Retry Time Selection Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Time Selection Page": {
+      "main": [
+        [
+          {
+            "node": "Compute Appointment Timings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "befd65ef-095e-4cd3-9868-c2f7d676ea92",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "0489cadf9782f79cad9523975acf35005de1726f8c0e0df3b445330953c67a54"
+  },
+  "nodeGroups": [],
+  "id": "7m2gWk7seTbH2ItZ",
+  "tags": []
+}
