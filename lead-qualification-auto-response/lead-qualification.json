@@ -1,0 +1,1460 @@
+{
+  "name": "Lead Qualification & Auto-Response",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-lead",
+        "options": {
+          "noResponseBody": false
+        }
+      },
+      "id": "07af7ac4-1b64-4f11-b2d6-588fd5c6d433",
+      "name": "New Lead (Tally)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        496
+      ],
+      "webhookId": "80daad53-f8c0-4f47-8b16-0a9417fd1fb9"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "name",
+              "type": "string",
+              "value": "={{ $json.body.data.fields.find(f => f.label.toLowerCase().includes(\"name\"))?.value || \"Unknown\" }}"
+            },
+            {
+              "id": "2",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $json.body.data.fields.find(f => f.label.toLowerCase().includes(\"email\"))?.value || \"\" }}"
+            },
+            {
+              "id": "3",
+              "name": "company",
+              "type": "string",
+              "value": "={{ $json.body.data.fields.find(f => f.label.toLowerCase().includes(\"company\"))?.value || \"\" }}"
+            },
+            {
+              "id": "4",
+              "name": "message",
+              "type": "string",
+              "value": "={{ $json.body.data.fields.find(f => f.label.toLowerCase().includes(\"looking\") || f.label.toLowerCase().includes(\"help\") || f.label.toLowerCase().includes(\"message\"))?.value || \"\" }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "36e58543-14fd-4f36-9ad8-0c8c8e5902ed",
+      "name": "Extract Lead Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "text": "=Name: {{ $json.name }}\nEmail: {{ $json.email }}\nCompany: {{ $json.company }}\nMessage: {{ $json.message }}",
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"properties\":{\"score\":{\"type\":\"string\",\"enum\":[\"Hot\",\"Warm\",\"Cold\"]},\"reasoning\":{\"type\":\"string\"},\"urgency\":{\"type\":\"string\",\"enum\":[\"High\",\"Medium\",\"Low\"]}},\"required\":[\"score\",\"reasoning\",\"urgency\"]}",
+        "options": {}
+      },
+      "id": "ffcfa728-fb90-4916-83e1-9840a7f7e03e",
+      "name": "Score Lead",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        368,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "288910dc-de92-446c-99f9-92d0add5de46",
+      "name": "Groq Lead Scoring Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        528,
+        720
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "ynFhvh2U4lx7fq1T",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1UEJQ_zTfy5gfL4gh5Eu7KLvSngyindoZ9tmHF8bCk_I"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Leads"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": [],
+          "schema": [],
+          "value": {}
+        },
+        "options": {
+          "useAppend": true
+        }
+      },
+      "id": "36af2777-e677-4954-8c15-29283171af81",
+      "name": "Log Lead to CRM",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        800,
+        496
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "gVlJMupyBpOfDuXn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.Score }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "Hot"
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "33540049-1b08-4bda-9e8a-e8d7498fa88f",
+      "name": "Score = Hot?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1024,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Write a warm, prompt reply to this hot sales lead.\n\nName: {{ $('Extract Lead Fields').item.json.name }}\nCompany: {{ $('Extract Lead Fields').item.json.company }}\nMessage: {{ $('Extract Lead Fields').item.json.message }}\n\nThank them, confirm we can help, and suggest booking a quick call. Keep it under 80 words, no markdown, no subject line.",
+        "batching": {}
+      },
+      "id": "8625fa4b-3ab4-47f3-9c78-bafc182f2eb7",
+      "name": "Draft Hot Lead Reply",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1248,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {
+          "temperature": 0.5
+        }
+      },
+      "id": "35026b5f-f9de-4cc5-bf64-a214a765aff0",
+      "name": "Groq Reply Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        224
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "ynFhvh2U4lx7fq1T",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "5443630474",
+        "text": "=🔥 <b>Hot Lead!</b>\n\n<b>Name:</b> {{ $('Extract Lead Fields').item.json.name }}\n<b>Company:</b> {{ $('Extract Lead Fields').item.json.company }}\n<b>Email:</b> {{ $('Extract Lead Fields').item.json.email }}\n<b>Message:</b> {{ $('Extract Lead Fields').item.json.message }}\n\n<b>Why hot:</b> {{ $('Score Lead').item.json.output.reasoning }}\n\n<b>Suggested reply:</b>\n{{ $('Draft Hot Lead Reply').item.json.text }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Send",
+                    "additionalFields": {
+                      "callback_data": "=send:{{ $('New Lead (Tally)').item.json.body.data.submissionId }}"
+                    }
+                  },
+                  {
+                    "text": "✏️ Edit",
+                    "additionalFields": {
+                      "callback_data": "=edit:{{ $('New Lead (Tally)').item.json.body.data.submissionId }}"
+                    }
+                  },
+                  {
+                    "text": "❌ Reject",
+                    "additionalFields": {
+                      "callback_data": "=reject:{{ $('New Lead (Tally)').item.json.body.data.submissionId }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "220e32dc-284c-4e62-abc8-5accc8860ce8",
+      "name": "Notify Hot Lead (Telegram)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1312,
+        400
+      ],
+      "webhookId": "f6135fa4-1773-41b0-83b2-7f8a49980179",
+      "credentials": {
+        "telegramApi": {
+          "id": "LA7urTejntKvlkiV",
+          "name": "Lead Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.Score }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "Warm"
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "b293ab08-2616-4872-8e5b-f95c90bdddd0",
+      "name": "Score = Warm?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1648,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Extract Lead Fields').item.json.email }}",
+        "subject": "Thanks for reaching out!",
+        "emailType": "text",
+        "message": "=Hi {{ $('Extract Lead Fields').item.json.name }},\n\nThanks so much for your interest! We received your message and wanted to follow up.\n\nWe would love to learn more about what you are looking for. Feel free to reply here anytime, or let us know a good time to chat.\n\nLooking forward to connecting!",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "76249a69-8f67-4619-bc1a-b866f32d8249",
+      "name": "Send Warm Nurture Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1296,
+        640
+      ],
+      "webhookId": "100cfc1e-1fa5-460f-b65f-aed462156b89",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "i35x1YRoWehrKi8y",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "ff17b981-0854-46c9-8f9e-e474dd093a74",
+      "name": "Cold - No Action",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1952,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "Name",
+              "type": "string",
+              "value": "={{ $('Extract Lead Fields').item.json.name }}"
+            },
+            {
+              "id": "2",
+              "name": "Email",
+              "type": "string",
+              "value": "={{ $('Extract Lead Fields').item.json.email }}"
+            },
+            {
+              "id": "3",
+              "name": "Company",
+              "type": "string",
+              "value": "={{ $('Extract Lead Fields').item.json.company }}"
+            },
+            {
+              "id": "4",
+              "name": "Message",
+              "type": "string",
+              "value": "={{ $('Extract Lead Fields').item.json.message }}"
+            },
+            {
+              "id": "5",
+              "name": "Score",
+              "type": "string",
+              "value": "={{ $json.output.score }}"
+            },
+            {
+              "id": "6",
+              "name": "Urgency",
+              "type": "string",
+              "value": "={{ $json.output.urgency }}"
+            },
+            {
+              "id": "7",
+              "name": "Reasoning",
+              "type": "string",
+              "value": "={{ $json.output.reasoning }}"
+            },
+            {
+              "id": "8",
+              "name": "Timestamp",
+              "type": "string",
+              "value": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b4bdd363-ecd9-421e-a510-6b2c8eb0667e",
+      "name": "Flatten Lead Record",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        640,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_lead_replies"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "displayName": "token",
+              "id": "token",
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "displayName": "leadName",
+              "id": "leadName",
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "displayName": "leadEmail",
+              "id": "leadEmail",
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "displayName": "company",
+              "id": "company",
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "displayName": "draftText",
+              "id": "draftText",
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "displayName": "telegramMessageId",
+              "id": "telegramMessageId",
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "displayName": "status",
+              "id": "status",
+              "type": "string"
+            }
+          ],
+          "value": {
+            "company": "={{ $('Extract Lead Fields').item.json.company }}",
+            "draftText": "={{ $json.text }}",
+            "leadEmail": "={{ $('Extract Lead Fields').item.json.email }}",
+            "leadName": "={{ $('Extract Lead Fields').item.json.name }}",
+            "status": "pending",
+            "telegramMessageId": "",
+            "token": "={{ $('New Lead (Tally)').item.json.body.data.submissionId }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "c9bc09a3-8d75-47af-a2f3-1c6144af584c",
+      "name": "Save Pending Lead Reply",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1584,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_lead_replies"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "token",
+              "keyValue": "={{ $('New Lead (Tally)').item.json.body.data.submissionId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "displayName": "telegramMessageId",
+              "id": "telegramMessageId",
+              "type": "string"
+            }
+          ],
+          "value": {
+            "telegramMessageId": "={{ $json.result.message_id }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "70f3bc56-67b3-473e-8fcd-c17375839505",
+      "name": "Save Telegram Message ID (Lead)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1696,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "id": "ac3125f3-0624-4da8-85ae-9978baad005f",
+      "name": "Telegram Update (Lead)",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        1200
+      ],
+      "webhookId": "5f8e4eaf-b9da-46ec-98f3-9cdb2832aa19",
+      "credentials": {
+        "telegramApi": {
+          "id": "LA7urTejntKvlkiV",
+          "name": "Lead Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.callback_query }}",
+              "operator": {
+                "operation": "exists",
+                "singleValue": true,
+                "type": "string"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "8705110c-eca4-4359-bb28-7fd75fb05ac3",
+      "name": "Has Callback? (Lead)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        224,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "action",
+              "type": "string",
+              "value": "={{ $json.callback_query.data.split(\":\")[0] }}"
+            },
+            {
+              "id": "2",
+              "name": "token",
+              "type": "string",
+              "value": "={{ $json.callback_query.data.split(\":\")[1] }}"
+            },
+            {
+              "id": "3",
+              "name": "queryId",
+              "type": "string",
+              "value": "={{ $json.callback_query.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "917191bd-a518-4038-8e90-fe50e933d740",
+      "name": "Parse Lead Callback",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        448,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $json.queryId }}",
+        "additionalFields": {}
+      },
+      "id": "872dfd77-fd22-4111-8257-44fdd86b8475",
+      "name": "Acknowledge Tap (Lead)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        1008
+      ],
+      "webhookId": "64bb1369-d541-4274-8e59-b64ccce2007d",
+      "credentials": {
+        "telegramApi": {
+          "id": "LA7urTejntKvlkiV",
+          "name": "Lead Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $('Parse Lead Callback').item.json.action }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "send"
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "728313de-cadd-4230-8d00-336c3b894a36",
+      "name": "Action = Send? (Lead)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        896,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_lead_replies"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "token",
+              "keyValue": "={{ $('Parse Lead Callback').item.json.token }}"
+            }
+          ]
+        }
+      },
+      "id": "300b9b72-c437-4aac-99dd-5a6f09b43299",
+      "name": "Get Pending Lead",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1104,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.leadEmail }}",
+        "subject": "Re: Your inquiry",
+        "emailType": "text",
+        "message": "={{ $json.draftText }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "979aa9a8-796f-4ef0-9210-9f4a3fdf0ea5",
+      "name": "Send Email To Lead",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1296,
+        864
+      ],
+      "webhookId": "e9a9ea4b-c625-4fc9-9cd1-2ab439ba333b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "i35x1YRoWehrKi8y",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_lead_replies"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "token",
+              "keyValue": "={{ $('Parse Lead Callback').item.json.token }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "displayName": "status",
+              "id": "status",
+              "type": "string"
+            }
+          ],
+          "value": {
+            "status": "sent"
+          }
+        },
+        "options": {}
+      },
+      "id": "a409096f-8e3c-470c-af4a-1603d2e90622",
+      "name": "Mark Lead Sent",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1552,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "5443630474",
+        "text": "✅ Reply sent to the lead successfully",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "5a4b9c22-47eb-4fc0-9bef-7415a72722fa",
+      "name": "Confirm Lead Email Sent",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1824,
+        880
+      ],
+      "webhookId": "c5bc81c2-82d2-4f90-9add-711cb892cbdd",
+      "credentials": {
+        "telegramApi": {
+          "id": "LA7urTejntKvlkiV",
+          "name": "Lead Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $('Parse Lead Callback').item.json.action }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "edit"
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "18357bcd-a541-4e07-b1d3-8c2265b504aa",
+      "name": "Action = Edit? (Lead)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1120,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_lead_replies"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "token",
+              "keyValue": "={{ $('Parse Lead Callback').item.json.token }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "displayName": "status",
+              "id": "status",
+              "type": "string"
+            }
+          ],
+          "value": {
+            "status": "awaiting_edit"
+          }
+        },
+        "options": {}
+      },
+      "id": "105594fe-8d49-4854-bd01-01fb356a310f",
+      "name": "Mark Lead Awaiting Edit",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "5443630474",
+        "text": "✏️ Reply directly to the original lead alert message above with your new text, and I'll send that instead.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "20be4662-9e68-4b22-b4c7-d28b50427485",
+      "name": "Ask For Lead Edit Text",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1568,
+        1104
+      ],
+      "webhookId": "070fb52b-e5f0-4450-bef9-213753d21373",
+      "credentials": {
+        "telegramApi": {
+          "id": "LA7urTejntKvlkiV",
+          "name": "Lead Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_lead_replies"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "token",
+              "keyValue": "={{ $('Parse Lead Callback').item.json.token }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "displayName": "status",
+              "id": "status",
+              "type": "string"
+            }
+          ],
+          "value": {
+            "status": "rejected"
+          }
+        },
+        "options": {}
+      },
+      "id": "cef05bbd-bcb3-45c0-b54e-720b65f95b74",
+      "name": "Mark Lead Rejected",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        1312
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "5443630474",
+        "text": "❌ Draft discarded, no email sent to lead.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "d571af1a-f94a-4e3c-822a-09324ced05a4",
+      "name": "Confirm Lead Rejected",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1568,
+        1312
+      ],
+      "webhookId": "c3d1c6ca-8d02-4a9c-b971-f2d7179691e7",
+      "credentials": {
+        "telegramApi": {
+          "id": "LA7urTejntKvlkiV",
+          "name": "Lead Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.message.reply_to_message }}",
+              "operator": {
+                "operation": "exists",
+                "singleValue": true,
+                "type": "string"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "1f3918a8-d1bc-43ac-bbb3-e4a09f57b91c",
+      "name": "Is Reply to Lead Draft?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        1456
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_lead_replies"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "telegramMessageId",
+              "keyValue": "={{ $json.message.reply_to_message.message_id }}"
+            },
+            {
+              "keyName": "status",
+              "keyValue": "awaiting_edit"
+            }
+          ]
+        }
+      },
+      "id": "fb134764-fbe3-4f45-8c5f-8c39759dc514",
+      "name": "Find Pending Lead By TG Message",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.leadEmail }}",
+        "subject": "Re: Your inquiry",
+        "emailType": "text",
+        "message": "={{ $('Telegram Update (Lead)').item.json.message.text }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "36a40457-7d1a-4d79-b855-378ae9b4ce81",
+      "name": "Send Edited Email To Lead",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        1408
+      ],
+      "webhookId": "237faddb-9ce4-490b-a808-3d6d4eba1f36",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "i35x1YRoWehrKi8y",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "pending_lead_replies"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "token",
+              "keyValue": "={{ $('Find Pending Lead By TG Message').item.json.token }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "displayName": "status",
+              "id": "status",
+              "type": "string"
+            }
+          ],
+          "value": {
+            "status": "sent"
+          }
+        },
+        "options": {}
+      },
+      "id": "d419f6dc-6efa-4012-ac0b-18d34aebc152",
+      "name": "Mark Lead Sent (Edited)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        1440
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "5443630474",
+        "text": "✅ Reply sent to the lead successfully (with your edits)",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "d94b9cea-31de-48c3-96ec-f693dba8e8ec",
+      "name": "Confirm Lead Sent (Edited)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1328,
+        1520
+      ],
+      "webhookId": "ea0457cd-725d-450c-9e9d-1a5016106fb9",
+      "credentials": {
+        "telegramApi": {
+          "id": "LA7urTejntKvlkiV",
+          "name": "Lead Bot"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "f6b74206-955e-4a12-92c5-4200a68b61c1",
+      "name": "Ignore (Lead)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        672,
+        1536
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Lead (Tally)": {
+      "main": [
+        [
+          {
+            "node": "Extract Lead Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Lead Fields": {
+      "main": [
+        [
+          {
+            "node": "Score Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Lead Scoring Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Score Lead",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Lead to CRM": {
+      "main": [
+        [
+          {
+            "node": "Score = Hot?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score = Hot?": {
+      "main": [
+        [
+          {
+            "node": "Draft Hot Lead Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Score = Warm?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Reply Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Draft Hot Lead Reply",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score = Warm?": {
+      "main": [
+        [
+          {
+            "node": "Send Warm Nurture Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cold - No Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Lead": {
+      "main": [
+        [
+          {
+            "node": "Flatten Lead Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flatten Lead Record": {
+      "main": [
+        [
+          {
+            "node": "Log Lead to CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Hot Lead Reply": {
+      "main": [
+        [
+          {
+            "node": "Save Pending Lead Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Pending Lead Reply": {
+      "main": [
+        [
+          {
+            "node": "Notify Hot Lead (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Hot Lead (Telegram)": {
+      "main": [
+        [
+          {
+            "node": "Save Telegram Message ID (Lead)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Update (Lead)": {
+      "main": [
+        [
+          {
+            "node": "Has Callback? (Lead)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Callback? (Lead)": {
+      "main": [
+        [
+          {
+            "node": "Parse Lead Callback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Reply to Lead Draft?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Lead Callback": {
+      "main": [
+        [
+          {
+            "node": "Acknowledge Tap (Lead)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Acknowledge Tap (Lead)": {
+      "main": [
+        [
+          {
+            "node": "Action = Send? (Lead)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Action = Send? (Lead)": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Action = Edit? (Lead)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Lead": {
+      "main": [
+        [
+          {
+            "node": "Send Email To Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email To Lead": {
+      "main": [
+        [
+          {
+            "node": "Mark Lead Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Lead Sent": {
+      "main": [
+        [
+          {
+            "node": "Confirm Lead Email Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Action = Edit? (Lead)": {
+      "main": [
+        [
+          {
+            "node": "Mark Lead Awaiting Edit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Lead Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Lead Awaiting Edit": {
+      "main": [
+        [
+          {
+            "node": "Ask For Lead Edit Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Lead Rejected": {
+      "main": [
+        [
+          {
+            "node": "Confirm Lead Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Reply to Lead Draft?": {
+      "main": [
+        [
+          {
+            "node": "Find Pending Lead By TG Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ignore (Lead)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Pending Lead By TG Message": {
+      "main": [
+        [
+          {
+            "node": "Send Edited Email To Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Edited Email To Lead": {
+      "main": [
+        [
+          {
+            "node": "Mark Lead Sent (Edited)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Lead Sent (Edited)": {
+      "main": [
+        [
+          {
+            "node": "Confirm Lead Sent (Edited)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "07648935-daa0-4b7b-a2bf-5712bfefadae",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "0489cadf9782f79cad9523975acf35005de1726f8c0e0df3b445330953c67a54"
+  },
+  "nodeGroups": [],
+  "id": "NmggODBDgEZnwB0f",
+  "tags": []
+}
