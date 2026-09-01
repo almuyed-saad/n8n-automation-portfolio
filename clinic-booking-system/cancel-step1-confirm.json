@@ -1,0 +1,111 @@
+{
+  "name": "Clinic Appointment - Cancel Step 1 (Confirm Page)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "clinic-cancel",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "23d6b832-422f-484d-8dd6-05eb250cda7e",
+      "name": "Cancel Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "c5ee71e6-077a-4537-99df-8f5794e27c1d"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "XMPIS84yhYx3rCvR"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyValue": "={{ $json.query.id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "id": "baf5fa58-3ce8-481f-8f3e-7f2a3240c919",
+      "name": "Get Booking",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<html><body style='font-family:Arial;text-align:center;padding:40px'><h2>Cancel Appointment?</h2><p>{{ $json.patientName }} — {{ $json.service }} on {{ $json.appointmentDateTime }}</p><a href='https://amisaad.app.n8n.cloud/webhook/clinic-cancel-confirm?id={{ $json.id }}' style='background:#c0392b;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none'>Yes, Cancel My Appointment</a></body></html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html"
+              }
+            ]
+          }
+        }
+      },
+      "id": "108f2645-ecd6-4d23-89f1-161d4735b765",
+      "name": "Show Confirm Page",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        448,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cancel Request": {
+      "main": [
+        [
+          {
+            "node": "Get Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Booking": {
+      "main": [
+        [
+          {
+            "node": "Show Confirm Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "ed2367bb-805b-450f-a07e-4425eaa7bfe9",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "0489cadf9782f79cad9523975acf35005de1726f8c0e0df3b445330953c67a54"
+  },
+  "nodeGroups": [],
+  "id": "9mNeiuWbMCkRjdnK",
+  "tags": []
+}
