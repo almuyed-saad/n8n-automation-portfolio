@@ -1,0 +1,160 @@
+{
+  "name": "Clinic Appointment - Cancel Step 2 (Execute)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "clinic-cancel-confirm",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "06cef73c-8d97-4350-9b48-b27d55abf1b0",
+      "name": "Confirm Cancel",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "763799c8-9aac-4a3b-841f-ad1aa45ffec8"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "XMPIS84yhYx3rCvR"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyValue": "={{ $json.query.id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "cancelled"
+          },
+          "schema": [
+            {
+              "id": "status",
+              "displayName": "status",
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "58848f73-b93c-46b9-b772-2a751e78750f",
+      "name": "Mark As Cancelled",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "5443630474",
+        "text": "=❌ Appointment #{{ $json.id }} was cancelled by the patient.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "b87b3db6-ee43-4a13-b7f0-ec1df1117560",
+      "name": "Notify Owner Cancelled",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        0
+      ],
+      "webhookId": "369aad46-9407-4d65-8c43-9a77d2f292cb",
+      "credentials": {
+        "telegramApi": {
+          "id": "dg4MOFYhJldO7jrR",
+          "name": "Bright Smile Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<html><body style='font-family:Arial;text-align:center;padding:40px'><h2>Appointment Cancelled</h2><p>Your appointment has been cancelled. We hope to see you another time!</p></body></html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html"
+              }
+            ]
+          }
+        }
+      },
+      "id": "5785770b-05f4-4878-a31d-698d765db241",
+      "name": "Show Cancelled Page",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Confirm Cancel": {
+      "main": [
+        [
+          {
+            "node": "Mark As Cancelled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark As Cancelled": {
+      "main": [
+        [
+          {
+            "node": "Notify Owner Cancelled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Owner Cancelled": {
+      "main": [
+        [
+          {
+            "node": "Show Cancelled Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "f7c24be7-3961-415c-939d-e99ef56a8a14",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "0489cadf9782f79cad9523975acf35005de1726f8c0e0df3b445330953c67a54"
+  },
+  "nodeGroups": [],
+  "id": "p6MlahQVQAlGYwHN",
+  "tags": []
+}
