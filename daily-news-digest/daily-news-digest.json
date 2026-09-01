@@ -1,0 +1,348 @@
+{
+  "name": "Daily News Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "http://feeds.bbci.co.uk/news/world/rss.xml",
+        "options": {}
+      },
+      "id": "a3b19ba0-20c8-4d5b-b3f4-8c558d44c09d",
+      "name": "BBC World RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        144,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "id": "40ff7b36-076e-4d68-a79c-12e12266ae05",
+      "name": "Combine Feeds",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        608,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.aljazeera.com/xml/rss/all.xml",
+        "options": {}
+      },
+      "id": "102e5982-8c6e-4910-8637-eb8104c30d72",
+      "name": "Al Jazeera RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        144,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "articles",
+        "include": "specifiedFields",
+        "fieldsToInclude": "title,link,contentSnippet,pubDate",
+        "options": {}
+      },
+      "id": "4638176d-62df-49a0-9fb9-d95b68064f3a",
+      "name": "Aggregate Articles",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        816,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a news editor preparing a daily digest for a reader in Bangladesh who wants MOSTLY Bangladesh news, with a bit of world news for context.\n\nBelow is a JSON array of today's news articles (title, link, snippet, pubDate). Articles from prothomalo.com links are BANGLADESH news (written in Bangla). Articles from bbc.co.uk and aljazeera.com links are WORLD news (written in English).\n\n{{ JSON.stringify($json.articles) }}\n\nTasks:\n1. Select 6-8 stories total.\n2. AT LEAST two-thirds of the selected stories MUST be Bangladesh news (prothomalo.com). Only 1-2 stories may be world news (bbc.co.uk / aljazeera.com), chosen only if genuinely major (e.g. war, major disasters, global economy).\n3. Skip duplicate or very minor stories.\n4. LANGUAGE RULE: Write the headline and summary for Bangladesh (prothomalo.com) stories in Bangla (বাংলা). Write the headline and summary for world (bbc.co.uk / aljazeera.com) stories in English. Do not translate Bangladesh stories into English.\n5. Output ONLY valid Telegram HTML (supported tags: <b>, <i>, <a href=\"\">) — no markdown, no code fences.\n\nFormat exactly like this:\n\n<b>🗞 আজকের সংবাদ — {{ $now.toFormat(\"dd LLL yyyy\") }}</b>\n\n<b>১. [বাংলা শিরোনাম / Headline]</b>\n[১-২ বাক্যের সারাংশ, অথবা ইংরেজি সংক্ষিপ্তসার world news হলে]\n<a href=\"[link]\">বিস্তারিত / Read more</a>\n\n(repeat for each story, numbered)\n\nKeep the whole message concise enough to read in under 2 minutes.",
+        "batching": {}
+      },
+      "id": "166780f5-3478-4185-89bc-e540fc09d17e",
+      "name": "Summarize & Select News",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        992,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "id": "6bce9bf3-e94d-4e9f-b8a9-6214acdadbab",
+      "name": "Groq Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1024,
+        272
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "ynFhvh2U4lx7fq1T",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "5443630474",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "disable_web_page_preview": true,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "74b4ff38-0248-4f59-9a50-6e2bebc81f2f",
+      "name": "Send Telegram Digest",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1376,
+        144
+      ],
+      "webhookId": "317f9be3-1d56-4818-a96c-f0a36d5f05cc",
+      "credentials": {
+        "telegramApi": {
+          "id": "wpxLVFaROKoKzxoI",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://www.prothomalo.com/feed/",
+        "options": {}
+      },
+      "id": "0f4e3d0d-ba69-44c3-ba85-48d30706af4b",
+      "name": "Prothom Alo RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        160,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "maxItems": 3
+      },
+      "id": "6c7c24b4-e992-4ee4-9ad0-514282c4b0a1",
+      "name": "Limit BBC",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        352,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "maxItems": 3
+      },
+      "id": "17f04cbc-76ee-434d-8423-3ef41a3acc28",
+      "name": "Limit Al Jazeera",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        352,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "maxItems": 15
+      },
+      "id": "2c8825a7-46f3-4623-a5b6-64839caf8185",
+      "name": "Limit Prothom Alo",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        352,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "122e5f8c-edea-4cbe-942a-7aaf9924f001",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -160,
+        160
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Aggregate Articles": {
+      "main": [
+        [
+          {
+            "node": "Summarize & Select News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize & Select News": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summarize & Select News",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BBC World RSS": {
+      "main": [
+        [
+          {
+            "node": "Limit BBC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit BBC": {
+      "main": [
+        [
+          {
+            "node": "Combine Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Al Jazeera RSS": {
+      "main": [
+        [
+          {
+            "node": "Limit Al Jazeera",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit Al Jazeera": {
+      "main": [
+        [
+          {
+            "node": "Combine Feeds",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Prothom Alo RSS": {
+      "main": [
+        [
+          {
+            "node": "Limit Prothom Alo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit Prothom Alo": {
+      "main": [
+        [
+          {
+            "node": "Combine Feeds",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Combine Feeds": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "BBC World RSS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Al Jazeera RSS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prothom Alo RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "75567882-62c0-40c2-8af6-7c26883227e1",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "0489cadf9782f79cad9523975acf35005de1726f8c0e0df3b445330953c67a54"
+  },
+  "nodeGroups": [],
+  "id": "wLqK5upzJAcXWOvz",
+  "tags": []
+}
