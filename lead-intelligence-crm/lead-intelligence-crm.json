@@ -1,0 +1,1338 @@
+{
+  "name": "AI B2B Lead Intelligence &amp; CRM Pipeline",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b6a250fa-aa36-480a-b078-b92c96b92b3e",
+      "name": "Run Lead Pipeline",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const leads = [\n  { companyName: 'Nimbus Cloud Solutions', website: 'nimbuscloud.io', industry: 'Software', employees: 85, country: 'United States', contactEmail: 'hello@nimbuscloud.io' },\n  { companyName: 'Nimbus Cloud Solutions', website: 'nimbuscloud.io', industry: 'Software', employees: 85, country: 'United States', contactEmail: 'hello@nimbuscloud.io' },\n  { companyName: 'GreenLeaf Organic Foods', website: 'greenleaffoods.com', industry: 'Food & Beverage', employees: 220, country: 'United States', contactEmail: 'info@greenleaffoods.com' },\n  { companyName: 'Fintech Bridge Ltd', website: 'fintechbridge.co.uk', industry: 'Fintech', employees: 40, country: 'United Kingdom', contactEmail: 'contact@fintechbridge.co.uk' },\n  { companyName: 'Maple Marketing Co', website: 'maplemarketing.ca', industry: 'Marketing', employees: 15, country: 'Canada', contactEmail: 'team@maplemarketing.ca' },\n  { companyName: 'GigaFactory Robotics', website: 'gigafactoryrobotics.com', industry: 'Manufacturing', employees: 2500, country: 'Germany', contactEmail: 'sales@gigafactoryrobotics.com' },\n  { companyName: 'ByteWave IT Services', website: 'bytewave.io', industry: 'IT Services', employees: 130, country: 'Australia', contactEmail: 'hi@bytewave.io' },\n  { companyName: 'ByteWave IT Services', website: 'bytewave.io', industry: 'IT Services', employees: 130, country: 'Australia', contactEmail: 'hi@bytewave.io' },\n  { companyName: 'Solo Freelance Design', website: 'solodesign.me', industry: 'Design', employees: 1, country: 'United States', contactEmail: 'me@solodesign.me' },\n  { companyName: 'Vertex SaaS Analytics', website: 'vertexsaas.com', industry: 'Software', employees: 60, country: 'United States', contactEmail: 'growth@vertexsaas.com' }\n];\nreturn leads.map(l => ({ json: l }));"
+      },
+      "id": "8ecd0802-bf10-4a5e-8cac-80c177c16577",
+      "name": "Generate Sample Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "website",
+        "options": {}
+      },
+      "id": "b68ff435-7d9f-4869-b3da-dc4ec6c2845e",
+      "name": "Remove Duplicate Leads",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        448,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ICP = { industries: ['Software','Fintech','IT Services','Marketing'], minEmployees: 10, maxEmployees: 500, countries: ['United States','United Kingdom','Canada','Australia','Bangladesh'] };\nconst items = $input.all().map(i => i.json);\nconst passed = items.filter(l => ICP.industries.includes(l.industry) && l.employees >= ICP.minEmployees && l.employees <= ICP.maxEmployees && ICP.countries.includes(l.country));\nreturn passed.map(l => ({ json: l }));"
+      },
+      "id": "0da47492-e565-485c-ac2f-25160d57e53a",
+      "name": "Apply ICP Rules",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(i => {\n  const l = i.json;\n  const revenueEstimateUSD = Math.round(l.employees * (8000 + Math.random() * 12000));\n  const techStackOptions = ['HubSpot','Salesforce','Slack','AWS','Google Workspace','Notion'];\n  const techStack = techStackOptions.sort(() => 0.5 - Math.random()).slice(0, 2).join(', ');\n  const linkedinFollowers = Math.round(l.employees * (5 + Math.random() * 15));\n  return { json: { ...l, revenueEstimateUSD, techStack, linkedinFollowers } };\n});"
+      },
+      "id": "5f5c8506-d008-4fe8-a7d2-ff5c01359dcd",
+      "name": "Enrich Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a B2B sales analyst. Ideal Customer Profile: Software/Fintech/IT Services/Marketing companies, 10-500 employees, based in the United States, United Kingdom, Canada, Australia, or Bangladesh.\n\nEvaluate this lead:\nCompany: {{ $json.companyName }}\nContact: {{ $json.contactName || 'Not provided' }}\nSource: {{ $json.source || 'Manual sample' }}\nIndustry: {{ $json.industry }}\nEmployees: {{ $json.employees }}\nCountry: {{ $json.country }}\nWebsite: {{ $json.website }}\nInquiry/problem: {{ $json.inquiry || 'Not provided' }}\nEstimated Revenue: {{ $json.revenueEstimateUSD }}\nTech Stack: {{ $json.techStack }}\nLinkedIn Followers: {{ $json.linkedinFollowers }}\n\nReturn ONLY valid JSON, no markdown, no extra text, in this exact format:\n{\"score\": <0-100 integer>, \"reason\": \"<one sentence why>\", \"outreachDraft\": \"<a short 2-sentence personalized outreach opening line that refers to the company or stated problem when available>\"}",
+        "batching": {}
+      },
+      "id": "aa88d308-234f-499d-827c-b1e8c3d7521d",
+      "name": "AI Score Lead",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1120,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "39b10342-770f-4d07-85bd-00340c0acde7",
+      "name": "Groq Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        416
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "ynFhvh2U4lx7fq1T",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const aiOutput = $input.item.json;\nconst original = $('Enrich Leads').item.json;\nlet raw = aiOutput.text || aiOutput.output || '';\nlet parsed;\ntry {\n  const cleaned = String(raw).replace(/```json/gi, '').replace(/```/g, '').trim();\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  parsed = { score: 0, reason: 'AI response could not be parsed', outreachDraft: '' };\n}\nreturn { json: { ...original, score: Number(parsed.score) || 0, reason: parsed.reason || '', outreachDraft: parsed.outreachDraft || '' } };"
+      },
+      "id": "57ed38c9-cb66-43cd-99cb-1dae49cd2a3b",
+      "name": "Parse AI Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.score }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              },
+              "rightValue": 70
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "61b7a6f3-d6a5-4a8e-a81d-d108f0904e29",
+      "name": "Score >= 70?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1696,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const orig = $('Parse AI Output').item.json;\nreturn { json: { ...orig, status: 'approved' } };"
+      },
+      "id": "28f5d3e0-5c3b-48cd-8109-2009ff79687f",
+      "name": "Log Approved",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2592,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const orig = $('Parse AI Output').item.json;\nreturn { json: { ...orig, status: 'auto-rejected-low-score' } };"
+      },
+      "id": "87d28365-0fe3-4a9f-a7a9-e608858dce92",
+      "name": "Log Auto Rejected",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2816,
+        368
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "8d5f9e8b-bacb-4fb4-8bb0-15eabe24741a",
+      "name": "Merge All Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3040,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function safeItems(name) { try { return $(name).all(); } catch (e) { return []; } }\nconst generated = safeItems('Generate Sample Leads');\nconst received = safeItems('Prepare Tally Submission');\nconst afterDedup = safeItems('Remove Duplicate Leads');\nconst afterRules = safeItems('Apply ICP Rules');\nconst results = $input.all().map(i => i.json);\nconst approved = results.filter(r => r.status === 'approved');\nconst declined = results.filter(r => r.status === 'declined');\nconst autoRejected = results.filter(r => r.status === 'auto-rejected-low-score');\nconst avgScore = results.length ? (results.reduce((s, r) => s + (Number(r.score) || 0), 0) / results.length).toFixed(1) : '0.0';\nconst sourceLabel = received.length ? 'Tally inquiry webhook' : 'Manual sample data';\nconst totalReceived = generated.length || received.length;\nconst approvedNames = approved.map(a => '• ' + a.companyName + ' (score ' + a.score + ')').join('\\n') || 'None';\nconst report = '📊 Lead Pipeline Report\\n\\nSource: ' + sourceLabel + '\\nTotal leads received: ' + totalReceived + '\\nAfter dedup: ' + afterDedup.length + '\\nPassed ICP rules: ' + afterRules.length + '\\nSent for AI scoring: ' + results.length + '\\nAvg AI score: ' + avgScore + '\\n\\n✅ Approved (' + approved.length + '):\\n' + approvedNames + '\\n\\n❌ Declined: ' + declined.length + '\\n⏭️ Auto-rejected (low score): ' + autoRejected.length;\nreturn [{ json: { report } }];\n"
+      },
+      "id": "46fc5d0f-5876-40be-a6e6-9393c189f332",
+      "name": "Build Daily Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3264,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "5443630474",
+        "text": "={{ $json.report }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "e650b84b-deaa-4a2a-9bac-aba7b4c76b53",
+      "name": "Send Daily Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3488,
+        192
+      ],
+      "webhookId": "08c598a2-c441-48cf-8683-cfb39cd317f8",
+      "credentials": {
+        "telegramApi": {
+          "id": "LA7urTejntKvlkiV",
+          "name": "Lead Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1ognLzhTfhHtXtWS2s6JskWPn88hL9qU5HURO5WkXkTc"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1590903452"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "Company Name"
+          ],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": true,
+              "display": true,
+              "displayName": "Company Name",
+              "id": "Company Name",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "Industry",
+              "id": "Industry",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "Employees",
+              "id": "Employees",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "Country",
+              "id": "Country",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "Contact Email",
+              "id": "Contact Email",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "Est. Revenue (USD)",
+              "id": "Est. Revenue (USD)",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "Tech Stack",
+              "id": "Tech Stack",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "AI Score",
+              "id": "AI Score",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "AI Reason",
+              "id": "AI Reason",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "Suggested Outreach",
+              "id": "Suggested Outreach",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "Consent At",
+              "id": "Consent At",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "Consent Version",
+              "id": "Consent Version",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "Opt-Out Status",
+              "id": "Opt-Out Status",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "AI Reason": "={{ $('Parse AI Output').item.json.reason }}",
+            "AI Score": "={{ $('Parse AI Output').item.json.score }}",
+            "Company Name": "={{ $('Parse AI Output').item.json.companyName }}",
+            "Consent At": "={{ $('Parse AI Output').item.json.consentAt }}",
+            "Consent Version": "={{ $('Parse AI Output').item.json.consentVersion }}",
+            "Contact Email": "={{ $('Parse AI Output').item.json.contactEmail }}",
+            "Country": "={{ $('Parse AI Output').item.json.country }}",
+            "Employees": "={{ $('Parse AI Output').item.json.employees }}",
+            "Est. Revenue (USD)": "={{ $('Parse AI Output').item.json.revenueEstimateUSD }}",
+            "Industry": "={{ $('Parse AI Output').item.json.industry }}",
+            "Opt-Out Status": "={{ $('Parse AI Output').item.json.optOutStatus }}",
+            "Suggested Outreach": "={{ $('Parse AI Output').item.json.outreachDraft }}",
+            "Tech Stack": "={{ $('Parse AI Output').item.json.techStack }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "0a0ed212-27f9-4da3-815c-b1e5e58baf57",
+      "name": "Save Approved Lead Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1600,
+        368
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "gVlJMupyBpOfDuXn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/1ognLzhTfhHtXtWS2s6JskWPn88hL9qU5HURO5WkXkTc/values/Approved%20Leads!A1:M1?valueInputOption=RAW",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": {
+          "majorDimension": "ROWS",
+          "range": "Approved Leads!A1:M1",
+          "values": [
+            [
+              "Company Name",
+              "Industry",
+              "Employees",
+              "Country",
+              "Contact Email",
+              "Est. Revenue (USD)",
+              "Tech Stack",
+              "AI Score",
+              "AI Reason",
+              "Suggested Outreach",
+              "Consent At",
+              "Consent Version",
+              "Opt-Out Status"
+            ]
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "7e9f6d1b-9c78-4e1b-9f48-2d7c4a0c6d21",
+      "name": "Ensure Lead CRM Headers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1360,
+        368
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "gVlJMupyBpOfDuXn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tally-lead-intake",
+        "options": {
+          "allowedOrigins": "*",
+          "ignoreBots": true,
+          "noResponseBody": true
+        }
+      },
+      "id": "2b8a5f3c-4b4d-4cf1-a30f-6f9e9f3f7d11",
+      "name": "Tally Lead Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        -32
+      ],
+      "webhookId": "33cc2ab9-c333-4af5-a9a5-0883b813a505",
+      "notes": "Connect this POST endpoint to a published Tally form. Keep the workflow unpublished until the endpoint is ready and explicitly approved."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const incoming = $json || {};\nconst body = incoming.body && typeof incoming.body === 'object' ? incoming.body : incoming;\nconst data = body.data && typeof body.data === 'object' ? body.data : {};\nconst fields = Array.isArray(data.fields) ? data.fields : [];\nconst byLabel = new Map();\nfor (const field of fields) { if (field && field.label) byLabel.set(String(field.label).trim().toLowerCase(), field.value); if (field && field.key) byLabel.set(String(field.key).trim().toLowerCase(), field.value); }\nconst read = (...labels) => { for (const label of labels) { const value = byLabel.get(String(label).trim().toLowerCase()); if (value !== undefined && value !== null && value !== '') return value; } return ''; };\nconst text = (value) => { if (Array.isArray(value)) return value.map((v) => typeof v === 'object' ? (v.text || v.name || v.id || '') : String(v)).filter(Boolean).join(', '); if (value && typeof value === 'object') return value.text || value.name || value.url || JSON.stringify(value); return value === undefined || value === null ? '' : String(value).trim(); };\nconst number = (value) => { if (typeof value === 'number' && Number.isFinite(value)) return value; const match = text(value).replace(/,/g, '').match(/-?\\d+(?:\\.\\d+)?/); return match ? Number(match[0]) : 0; };\nconst boolean = (value) => { if (typeof value === 'boolean') return value; return ['true','1','yes','y','checked','agree','i agree','consent'].includes(text(value).toLowerCase()); };\nconst submissionId = text(data.submissionId || data.responseId || body.eventId || ('unidentified-' + Date.now()));\nconst eventId = text(body.eventId);\nconst receivedAt = body.createdAt || data.createdAt || new Date().toISOString();\nconst contactName = text(read('Full name','Name','Contact name'));\nconst companyName = text(read('Company name','Company'));\nconst contactEmail = text(read('Work email','Email','Contact email')).toLowerCase();\nconst websiteRaw = text(read('Company website','Website','Website URL'));\nconst website = websiteRaw && /^https?:\\/\\//i.test(websiteRaw) ? websiteRaw : websiteRaw ? 'https://' + websiteRaw : '';\nconst industry = text(read('Industry','Business industry'));\nconst employeeCount = number(read('Approximate number of employees','Employee count','Employees','Company size'));\nconst country = text(read('Country','Company country'));\nconst inquiry = text(read('What problem do you need help with?','Problem','Inquiry','Message'));\nconst consent = boolean(read('I agree to be contacted about this inquiry','Permission to receive a reply','Consent','Opt-in','Opt in'));\nconst honeypot = text(read('faxNumber','Fax number','Website confirmation'));\nconst validationErrors = [];\nif (!contactName) validationErrors.push('missing contact name');\nif (!companyName) validationErrors.push('missing company name');\nif (!contactEmail) validationErrors.push('missing work email');\nif (contactEmail && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(contactEmail)) validationErrors.push('invalid work email');\nif (!consent) validationErrors.push('contact consent not granted');\nif (contactName.length > 100) validationErrors.push('contact name too long');\nif (companyName.length > 120) validationErrors.push('company name too long');\nif (website.length > 500) validationErrors.push('website too long');\nif (country.length > 80) validationErrors.push('country too long');\nif (inquiry.length > 3000) validationErrors.push('inquiry too long');\nif (employeeCount < 1 || employeeCount > 100000) validationErrors.push('employee count outside allowed range');\nif (honeypot) validationErrors.push('honeypot field populated');\nconst leadKey = (contactEmail || website || companyName || submissionId).toLowerCase().replace(/^https?:\\/\\//, '').replace(/\\/$/, '').trim();\nconst securityStatus = honeypot || validationErrors.some((e) => e.includes('too long') || e.includes('outside allowed') || e.includes('honeypot')) ? 'suspicious' : validationErrors.length ? 'validation-failed' : 'accepted';\nconst retentionUntil = new Date(new Date(receivedAt).getTime() + 180 * 24 * 60 * 60 * 1000).toISOString();\nconst source = text(body.source) || 'Tally';\nconst sourceType = source === 'n8n-form' ? 'n8n-form' : 'tally-webhook';\nreturn { json: { submissionId, eventId, receivedAt, formId: text(data.formId), formName: text(data.formName), contactName, companyName, workEmail: contactEmail, website, industry, employeeCount, country, inquiry, consent, consentAt: consent ? receivedAt : '', consentVersion: 'privacy-v1-2026-08-25', optOutStatus: 'not_requested', retentionUntil, securityStatus, source, leadKey, status: validationErrors.length ? 'validation-failed' : 'received', validationErrors: validationErrors.join('; '), rawPayload: JSON.stringify(body), employees: employeeCount, contactEmail, sourceType } };"
+      },
+      "id": "6a9f6e5a-087b-47b4-bf0b-1a86dc5e086c",
+      "name": "Prepare Tally Submission",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        -32
+      ],
+      "notes": "Maps Tally’s fields-array payload into the lead schema. It captures raw data and validation status before the lead continues."
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "cachedResultName": "tally_lead_submissions",
+          "mode": "id",
+          "value": "xLebKYBEgrgzW8CJ"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "submissionId",
+              "keyValue": "={{ $json.submissionId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "submissionId"
+          ],
+          "value": {
+            "companyName": "={{ $json.companyName }}",
+            "consent": "={{ $json.consent }}",
+            "consentAt": "={{ $json.consentAt }}",
+            "consentVersion": "={{ $json.consentVersion }}",
+            "contactName": "={{ $json.contactName }}",
+            "country": "={{ $json.country }}",
+            "employeeCount": "={{ $json.employeeCount }}",
+            "eventId": "={{ $json.eventId }}",
+            "formId": "={{ $json.formId }}",
+            "formName": "={{ $json.formName }}",
+            "industry": "={{ $json.industry }}",
+            "inquiry": "={{ $json.inquiry }}",
+            "leadKey": "={{ $json.leadKey }}",
+            "optOutStatus": "={{ $json.optOutStatus }}",
+            "rawPayload": "={{ $json.rawPayload }}",
+            "receivedAt": "={{ $json.receivedAt }}",
+            "retentionUntil": "={{ $json.retentionUntil }}",
+            "securityStatus": "={{ $json.securityStatus }}",
+            "source": "={{ $json.source }}",
+            "status": "={{ $json.status }}",
+            "submissionId": "={{ $json.submissionId }}",
+            "website": "={{ $json.website }}",
+            "workEmail": "={{ $json.workEmail }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "f2b9b2cf-72d4-4c9c-a4fa-7baf00d7a3d1",
+      "name": "Upsert Raw Tally Submission",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        -32
+      ],
+      "notes": "Persists the raw Tally response immediately and upserts by submissionId so retries do not duplicate it."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const lead = $json || {};\nconst errors = [];\nif (!lead.contactName) errors.push('full name');\nif (!lead.companyName) errors.push('company name');\nif (!lead.workEmail || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(lead.workEmail)) errors.push('valid work email');\nif (!lead.consent) errors.push('contact consent');\nif (lead.securityStatus === 'suspicious') errors.push('security screening');\nif (lead.optOutStatus === 'opted_out') errors.push('opt-out suppression');\nif (errors.length) throw new Error('Submission stored but not processed: missing, invalid, suspicious, or suppressed ' + errors.join(', ') + '.');\nreturn { json: { companyName: lead.companyName, website: lead.website, industry: lead.industry, employees: lead.employeeCount, country: lead.country, contactEmail: lead.workEmail, contactName: lead.contactName, inquiry: lead.inquiry, leadKey: lead.leadKey, source: lead.source, sourceType: lead.sourceType, submissionId: lead.submissionId, eventId: lead.eventId, consent: lead.consent, consentAt: lead.consentAt, consentVersion: lead.consentVersion, optOutStatus: lead.optOutStatus, retentionUntil: lead.retentionUntil, securityStatus: lead.securityStatus, formId: lead.formId, formName: lead.formName } };"
+      },
+      "id": "af4f9c90-3db9-4c34-9bb7-f0cf0c3a0b9c",
+      "name": "Continue Tally Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        -32
+      ],
+      "notes": "Only validated and consented leads enter ICP scoring; invalid submissions remain preserved in the raw table."
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "chatId": "5443630474",
+        "message": "=🎯 New Qualified Lead (Score: {{ $json.score }}/100)\n\nCompany: {{ $json.companyName }}\nIndustry: {{ $json.industry }} | {{ $json.employees }} employees | {{ $json.country }}\nEst. Revenue: {{ $json.revenueEstimateUSD }}\nTech Stack: {{ $json.techStack }}\n\nWhy: {{ $json.reason }}\n\nSuggested Opener: {{ $json.outreachDraft }}\n\nApprove to add to CRM?",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double"
+          }
+        },
+        "chatApproval": true,
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "d1d948fe-5905-41c4-84bf-2516647db5b8",
+      "name": "Ask Owner Approval",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1920,
+        96
+      ],
+      "webhookId": "e8093161-4b1c-4c5a-af37-7516f817ba67",
+      "credentials": {
+        "telegramApi": {
+          "id": "wpxLVFaROKoKzxoI",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.data.approved }}",
+              "operator": {
+                "operation": "true",
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "bed140da-993e-40c3-af1e-a857fda3d9a2",
+      "name": "Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2144,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const orig = $('Parse AI Output').item.json;\nreturn { json: { ...orig, status: 'declined' } };"
+      },
+      "id": "b08881d6-83d8-4808-bd4d-e19ee874573c",
+      "name": "Log Declined",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2592,
+        192
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "fcd9e669-4a6d-45b3-88a8-eacb9c2668a0",
+      "name": "Merge Approval Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2816,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "formTitle": "B2B Lead Qualification Inquiry",
+        "formDescription": "Tell us about your business and the challenge you want help solving. We use these details to review your inquiry, qualify the request, and contact you about it. Your information may be stored in our CRM. You can request correction, deletion, or no further contact at any time.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Full name",
+              "fieldName": "fullName",
+              "placeholder": "Your full name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Company name",
+              "fieldName": "companyName",
+              "placeholder": "Your company name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Work email",
+              "fieldType": "email",
+              "fieldName": "workEmail",
+              "placeholder": "you@company.com",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Company website",
+              "fieldName": "website",
+              "placeholder": "https://yourcompany.com"
+            },
+            {
+              "fieldLabel": "Industry",
+              "fieldType": "dropdown",
+              "fieldName": "industry",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Software"
+                  },
+                  {
+                    "option": "Fintech"
+                  },
+                  {
+                    "option": "IT Services"
+                  },
+                  {
+                    "option": "Marketing"
+                  },
+                  {
+                    "option": "Other"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Approximate number of employees",
+              "fieldType": "number",
+              "fieldName": "employees",
+              "placeholder": "e.g. 25",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Country",
+              "fieldName": "country",
+              "placeholder": "Your country",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "What problem do you need help with?",
+              "fieldType": "textarea",
+              "fieldName": "inquiry",
+              "placeholder": "Describe the business problem or automation you are exploring",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "I agree to be contacted about this inquiry",
+              "fieldType": "checkbox",
+              "fieldName": "consent",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Yes, I agree to be contacted about this inquiry"
+                  }
+                ]
+              },
+              "limitSelection": "exact",
+              "requiredField": true
+            },
+            {
+              "fieldType": "hiddenField",
+              "fieldName": "faxNumber"
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "buttonLabel": "Submit inquiry",
+          "path": "client-lead-intake",
+          "respondWithOptions": {
+            "values": {
+              "formSubmittedText": "Thank you. Your inquiry has been received and will be reviewed by our team."
+            }
+          }
+        }
+      },
+      "id": "f1e2d3c4-b5a6-4789-9012-3456789abcde",
+      "name": "Client Lead Intake Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -240,
+        448
+      ],
+      "webhookId": "1c2851ed-4046-44f0-8afb-7aacf781d9c5"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const input = $json || {};\nconst now = new Date().toISOString();\nconst submissionId = 'n8n-form-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);\nconst consentValue = input.consent === true || String(input.consent || '').toLowerCase().includes('yes');\nconst fields = [\n  { key: 'fullName', label: 'Full name', type: 'INPUT_TEXT', value: input.fullName || '' },\n  { key: 'companyName', label: 'Company name', type: 'INPUT_TEXT', value: input.companyName || '' },\n  { key: 'workEmail', label: 'Work email', type: 'INPUT_EMAIL', value: input.workEmail || '' },\n  { key: 'website', label: 'Company website', type: 'INPUT_LINK', value: input.website || '' },\n  { key: 'industry', label: 'Industry', type: 'DROPDOWN', value: input.industry || '' },\n  { key: 'employees', label: 'Approximate number of employees', type: 'INPUT_NUMBER', value: input.employees || '' },\n  { key: 'country', label: 'Country', type: 'INPUT_TEXT', value: input.country || '' },\n  { key: 'inquiry', label: 'What problem do you need help with?', type: 'TEXTAREA', value: input.inquiry || '' },\n  { key: 'consent', label: 'I agree to be contacted about this inquiry', type: 'CHECKBOXES', value: consentValue },\n  { key: 'faxNumber', label: 'faxNumber', type: 'INPUT_TEXT', value: input.faxNumber || '' }\n];\nreturn { json: { body: { source: 'n8n-form', eventId: submissionId, eventType: 'FORM_RESPONSE', createdAt: now, data: { responseId: submissionId, submissionId, respondentId: '', formId: 'n8n-client-lead-intake', formName: 'B2B Lead Qualification Inquiry', createdAt: now, fields } } } };"
+      },
+      "id": "a2b3c4d5-e6f7-4890-a123-456789abcdef",
+      "name": "Prepare Client Form Submission",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "formTitle": "Stop Contact / Privacy Request",
+        "formDescription": "Use this form to request no further contact about your inquiry. We will record the request against the email address you provide. This is a processing control, not legal advice.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Email used for the inquiry",
+              "fieldType": "email",
+              "fieldName": "email",
+              "placeholder": "you@company.com",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Company name",
+              "fieldName": "companyName",
+              "placeholder": "Your company name"
+            },
+            {
+              "fieldLabel": "Reason (optional)",
+              "fieldType": "textarea",
+              "fieldName": "reason",
+              "placeholder": "Optional reason for your request"
+            },
+            {
+              "fieldType": "hiddenField",
+              "fieldName": "faxNumber"
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "buttonLabel": "Submit privacy request",
+          "path": "lead-opt-out",
+          "respondWithOptions": {
+            "values": {
+              "formSubmittedText": "Your no-contact request has been recorded."
+            }
+          }
+        }
+      },
+      "id": "b7c8d9e0-f1a2-4b3c-8d4e-5f6a7b8c9d0e",
+      "name": "Client Opt-Out Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -240,
+        704
+      ],
+      "webhookId": "620bfc02-584d-4c1f-801c-72f58ac86867"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const input = $json || {};\nconst email = String(input.email || '').trim().toLowerCase();\nconst companyName = String(input.companyName || '').trim().slice(0, 120);\nconst reason = String(input.reason || '').trim().slice(0, 1000);\nconst honeypot = String(input.faxNumber || '').trim();\nif (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new Error('Please provide a valid email address.');\nif (honeypot) throw new Error('Privacy request rejected by security screening.');\nconst now = new Date().toISOString();\nreturn { json: { leadKey: email, email, companyName, reason, requestedAt: now, source: 'n8n-opt-out-form', status: 'requested' } };"
+      },
+      "id": "c8d9e0f1-a2b3-4c5d-9e6f-7a8b9c0d1e2f",
+      "name": "Prepare Opt-Out Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "cachedResultName": "lead_opt_outs",
+          "mode": "id",
+          "value": "H9HpEKaG6N5cmz3P"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "leadKey",
+              "id": "leadKey",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "email",
+              "id": "email",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "companyName",
+              "id": "companyName",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "reason",
+              "id": "reason",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "requestedAt",
+              "id": "requestedAt",
+              "required": false,
+              "type": "date"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "source",
+              "id": "source",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "status",
+              "id": "status",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "companyName": "={{ $json.companyName }}",
+            "email": "={{ $json.email }}",
+            "leadKey": "={{ $json.leadKey }}",
+            "reason": "={{ $json.reason }}",
+            "requestedAt": "={{ $json.requestedAt }}",
+            "source": "={{ $json.source }}",
+            "status": "={{ $json.status }}"
+          }
+        },
+        "options": {
+          "optimizeBulk": false
+        }
+      },
+      "id": "d9e0f1a2-b3c4-4d5e-8f6a-7b8c9d0e1f2a",
+      "name": "Store Opt-Out Request",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "cachedResultName": "lead_opt_outs",
+          "mode": "id",
+          "value": "H9HpEKaG6N5cmz3P"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "leadKey",
+              "keyValue": "={{ $('Prepare Tally Submission').item.json.leadKey }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "id": "e0f1a2b3-c4d5-4e6f-9a7b-8c9d0e1f2a3b",
+      "name": "Get Lead Opt-Out Match",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        448
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const lead = $('Prepare Tally Submission').item.json;\nconst match = $json || {};\nconst matched = String(match.leadKey || '').toLowerCase() === String(lead.leadKey || '').toLowerCase() && String(match.status || '').toLowerCase() === 'requested';\nreturn { json: { ...lead, optOutStatus: matched ? 'opted_out' : 'not_requested', status: matched ? 'opted-out-suppressed' : lead.status } };"
+      },
+      "id": "f0a1b2c3-d4e5-4f6a-9b8c-0d1e2f3a4b5c",
+      "name": "Check Lead Opt-Out",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        448
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Run Lead Pipeline": {
+      "main": [
+        [
+          {
+            "node": "Generate Sample Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Sample Leads": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicate Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicate Leads": {
+      "main": [
+        [
+          {
+            "node": "Apply ICP Rules",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply ICP Rules": {
+      "main": [
+        [
+          {
+            "node": "Enrich Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich Leads": {
+      "main": [
+        [
+          {
+            "node": "AI Score Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Score Lead": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Score Lead",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Output": {
+      "main": [
+        [
+          {
+            "node": "Score >= 70?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score >= 70?": {
+      "main": [
+        [
+          {
+            "node": "Ask Owner Approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Auto Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Auto Rejected": {
+      "main": [
+        [
+          {
+            "node": "Merge All Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge All Results": {
+      "main": [
+        [
+          {
+            "node": "Build Daily Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Daily Report": {
+      "main": [
+        [
+          {
+            "node": "Send Daily Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Approved Lead Sheet": {
+      "main": [
+        [
+          {
+            "node": "Log Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure Lead CRM Headers": {
+      "main": [
+        [
+          {
+            "node": "Save Approved Lead Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tally Lead Intake Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Tally Submission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Raw Tally Submission": {
+      "main": [
+        [
+          {
+            "node": "Continue Tally Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Continue Tally Lead": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicate Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Approved": {
+      "main": [
+        [
+          {
+            "node": "Merge Approval Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask Owner Approval": {
+      "main": [
+        [
+          {
+            "node": "Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved?": {
+      "main": [
+        [
+          {
+            "node": "Ensure Lead CRM Headers",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Declined",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Declined": {
+      "main": [
+        [
+          {
+            "node": "Merge Approval Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Approval Results": {
+      "main": [
+        [
+          {
+            "node": "Merge All Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Client Lead Intake Form": {
+      "main": [
+        [
+          {
+            "node": "Prepare Client Form Submission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Client Form Submission": {
+      "main": [
+        [
+          {
+            "node": "Prepare Tally Submission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Tally Submission": {
+      "main": [
+        [
+          {
+            "node": "Get Lead Opt-Out Match",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Lead Opt-Out Match": {
+      "main": [
+        [
+          {
+            "node": "Check Lead Opt-Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Lead Opt-Out": {
+      "main": [
+        [
+          {
+            "node": "Upsert Raw Tally Submission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Client Opt-Out Form": {
+      "main": [
+        [
+          {
+            "node": "Prepare Opt-Out Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Opt-Out Request": {
+      "main": [
+        [
+          {
+            "node": "Store Opt-Out Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "f6942af7-e5ca-43bd-9d61-9607ae9f48e7",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "0489cadf9782f79cad9523975acf35005de1726f8c0e0df3b445330953c67a54"
+  },
+  "nodeGroups": [],
+  "id": "25mtPEogJatYcqzZ",
+  "tags": []
+}
